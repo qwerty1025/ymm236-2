@@ -2,9 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <!-- 加入 viewport-fit=cover 及 user-scalable=no 徹底防止 iOS 晃動與雙擊放大 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>羊奶配送管理系統 Pro Max (B2B & B2C 全能旗艦版)</title>
+    <title>收益 (B2B & B2C 整合旗艦版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
@@ -16,28 +15,26 @@
             overflow-x: hidden; 
             touch-action: manipulation; 
             -webkit-tap-highlight-color: transparent;
-            user-select: none; /* 防止畫面長按反白 */
+            user-select: none;
         }
-        input, textarea { -webkit-user-select: auto; user-select: auto; }
+        input, textarea, select { -webkit-user-select: auto; user-select: auto; }
         
         [v-cloak] { display: none !important; }
         #fallback-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-weight: bold; color: #6b7280; }
 
         .bento-card {
             background: #ffffff;
-            border-radius: 1.5rem;
+            border-radius: 1.25rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            padding: 1.5rem;
+            padding: 1.25rem;
             border: 2px solid #e5e7eb;
         }
         
-        /* B2C 小卡片特化 */
         .bento-card-sm {
-            padding: 0.875rem;
-            border-radius: 1.25rem;
+            padding: 0.75rem;
+            border-radius: 1rem;
         }
 
-        .driver-text { color: #111827; font-weight: 900; letter-spacing: 0.05em; }
         .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 90px); }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -45,11 +42,11 @@
         input[type="radio"]:checked + div { background-color: #2563eb; color: white; border-color: #2563eb; }
         .org-radio:checked + div { background-color: #1e3a8a; color: white; border-color: #1e3a8a; }
         .weekday-checkbox input:checked + div { background-color: #3b82f6; color: white; border-color: #2563eb; box-shadow: 0 2px 4px rgba(59,130,246,0.3); }
-        
-        .btn-touch { min-height: 44px; min-width: 44px; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
+        .cycle-radio input:checked + div { background-color: #059669; color: white; border-color: #059669; box-shadow: 0 2px 4px rgba(5,150,105,0.3); }
+
+        .btn-touch { min-height: 40px; min-width: 40px; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
         .btn-touch:active { transform: scale(0.9); }
 
-        /* B2C 日曆元件 */
         .modal-overlay { background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(3px); }
         .bottom-sheet {
             border-top-left-radius: 1.5rem; border-top-right-radius: 1.5rem;
@@ -71,6 +68,7 @@
         .qty-null { background-color: #f9fafb; border-color: #f3f4f6; color: #d1d5db; }
         .qty-0 { background-color: #f3f4f6; border-color: #d1d5db; color: #9ca3af; box-shadow: inset 0 0 0 1px #e5e7eb; }
         .qty-active { background-color: #dbeafe; border-color: #93c5fd; color: #1e40af; }
+        .qty-active-morning { background-color: #d1fae5; border-color: #6ee7b7; color: #047857; }
     </style>
 </head>
 <body class="pb-safe relative">
@@ -80,530 +78,582 @@
         <span>系統載入中，請稍候...</span>
     </div>
 
+    <datalist id="b2c-areas">
+        <option value="三峽"></option><option value="大埔"></option><option value="二鬮"></option>
+        <option value="中園街"></option><option value="永安街"></option><option value="光明路"></option>
+        <option value="介壽路"></option><option value="老街"></option><option value="菜市場"></option>
+    </datalist>
+
     <div id="app" v-cloak class="max-w-md mx-auto p-4 w-full">
         
-        <!-- 全域 Header (依據分頁動態調整風格) -->
-        <header class="mb-4 mt-2" :class="{'bg-gray-900 text-white p-4 rounded-3xl shadow-lg -mx-2': activeTab === 'b2c'}">
+        <header class="mb-4 mt-2">
             <div class="flex justify-between items-end">
                 <div>
-                    <h1 class="text-3xl font-black tracking-wider" :class="activeTab === 'b2c' ? 'text-white' : 'text-gray-900'">
-                        配送管理 <span class="text-blue-500">Pro</span>
-                    </h1>
+                    <h1 class="text-3xl font-black text-gray-900 tracking-wider">配送管理 <span class="text-blue-600">Pro</span></h1>
                     <div class="flex items-center gap-2 mt-1">
-                        <span class="text-sm font-bold" :class="activeTab === 'b2c' ? 'text-gray-400' : 'text-gray-500'">雲端同步版 (B2B & B2C 整合)</span>
+                        <span class="text-sm text-gray-500 font-bold">全域整合版 (B2B & B2C)</span>
                         <span v-if="isSyncing" class="flex h-3 w-3 relative">
                           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                           <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                         </span>
                     </div>
                 </div>
-                <button v-show="activeTab === 'b2c' && activeB2CTab === 'customers'" @click="addNewB2CCustomer" class="bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded-xl shadow active:scale-95 transition flex items-center gap-1">
+                <button v-show="activeTab === 'b2c'" @click="addNewB2CCustomer" class="bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded-xl shadow active:scale-95 transition flex items-center gap-1">
                     ➕ 新增散客
                 </button>
-            </div>
-            
-            <!-- B2C 專屬的子導覽列 -->
-            <div v-show="activeTab === 'b2c'" class="flex gap-2 mt-4 bg-gray-800 p-1 rounded-xl">
-                <button @click="activeB2CTab = 'customers'" :class="activeB2CTab === 'customers' ? 'bg-white text-gray-900 shadow' : 'text-gray-400'" class="flex-1 py-2 rounded-lg font-bold text-sm transition">👥 總表 (雙欄)</button>
-                <button @click="activeB2CTab = 'calendar'" :class="activeB2CTab === 'calendar' ? 'bg-white text-gray-900 shadow' : 'text-gray-400'" class="flex-1 py-2 rounded-lg font-bold text-sm transition">📅 統計日曆</button>
+                <button v-show="activeTab === 'b2c_morning'" @click="addNewB2CMorningCustomer" class="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl shadow active:scale-95 transition flex items-center gap-1">
+                    ➕ 新增晨客
+                </button>
             </div>
         </header>
 
-        <!-- ================= 分頁 1: B2B 首頁 & 設定 ================= -->
-        <div v-show="activeTab === 'daily'" class="space-y-4">
-            <div class="bento-card bg-gray-900 border-none text-white">
-                <div class="flex items-center justify-between mb-1">
-                    <button @click="prevMonth" class="text-gray-400 p-2 hover:bg-gray-800 rounded-lg font-black" :class="{'opacity-0 pointer-events-none': currentMonthIndex === availableMonths.length - 1}">&lt;</button>
-                    <h2 class="text-xl font-bold text-gray-300">📊 {{ displayMonthTitle }} 總進帳</h2>
-                    <button @click="nextMonth" class="text-gray-400 p-2 hover:bg-gray-800 rounded-lg font-black" :class="{'opacity-0 pointer-events-none': currentMonthIndex === 0}">&gt;</button>
+        <!-- ================= 分頁 1: 總首頁 (營收日曆) ================= -->
+        <div v-show="activeTab === 'home'" class="space-y-4">
+            <div class="bento-card bg-gray-900 border-none text-white p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <button @click="homeCalPrevMonth" class="text-gray-400 p-1 hover:bg-gray-800 rounded-lg font-black">&lt;</button>
+                    <h2 class="text-lg font-black text-gray-300">📊 {{ homeCalYear }}年{{ homeCalMonth + 1 }}月 總結</h2>
+                    <button @click="homeCalNextMonth" class="text-gray-400 p-1 hover:bg-gray-800 rounded-lg font-black">&gt;</button>
                 </div>
-                <div class="text-4xl font-black text-green-400 tracking-wider mb-4 text-center">
-                    $ {{ selectedMonthStats.ranchRevenue.toLocaleString() }}
-                </div>
-                <div class="grid grid-cols-2 gap-4 text-sm font-bold border-t border-gray-700 pt-4">
-                    <div>店端淨銷售：<span class="text-blue-300">$ {{ selectedMonthStats.storeSales.toLocaleString() }}</span></div>
-                    <div>店端總毛利：<span class="text-yellow-500">$ {{ selectedMonthStats.storeProfit.toLocaleString() }}</span></div>
-                </div>
-            </div>
-            
-            <div class="bento-card border-l-8 border-l-blue-600">
-                <div class="flex justify-between items-center mb-2">
-                    <h2 class="text-2xl driver-text">今日編輯中(淨數量)</h2>
-                    <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">已扣除退貨</span>
-                </div>
-                <div class="grid grid-cols-2 gap-4 mt-4">
-                    <div class="bg-gray-50 p-3 rounded-xl text-center border-2 border-gray-200">
-                        <p class="text-sm text-gray-500 font-bold mb-1">大瓶 950g</p>
-                        <p class="text-3xl driver-text">{{ totalCurrentBig }}</p>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="bg-gray-800 rounded-xl p-2 border border-gray-700">
+                        <p class="text-[10px] font-bold text-gray-400 mb-1">B2B (農會等)</p>
+                        <p class="text-sm font-black text-blue-400">${{ homeStats.b2b.toLocaleString() }}</p>
                     </div>
-                    <div class="bg-gray-50 p-3 rounded-xl text-center border-2 border-gray-200">
-                        <p class="text-sm text-gray-500 font-bold mb-1">中/小瓶 500g</p>
-                        <p class="text-3xl driver-text">{{ totalCurrentSmall }}</p>
+                    <div class="bg-gray-800 rounded-xl p-2 border border-gray-700">
+                        <p class="text-[10px] font-bold text-gray-400 mb-1">B2C (散客)</p>
+                        <p class="text-sm font-black text-purple-400">${{ homeStats.b2cPro.toLocaleString() }}</p>
                     </div>
+                    <div class="bg-gray-800 rounded-xl p-2 border border-gray-700">
+                        <p class="text-[10px] font-bold text-gray-400 mb-1">B2C (晨間)</p>
+                        <p class="text-sm font-black text-emerald-400">${{ homeStats.b2cMorning.toLocaleString() }}</p>
+                    </div>
+                </div>
+                <div class="mt-3 text-center border-t border-gray-700 pt-3">
+                    <p class="text-xs font-bold text-gray-400 mb-1">本月整體預估總營收</p>
+                    <p class="text-3xl font-black text-green-400 tracking-wider">${{ (homeStats.b2b + homeStats.b2cPro + homeStats.b2cMorning).toLocaleString() }}</p>
                 </div>
             </div>
 
-            <hr class="border-t-2 border-gray-300 border-dashed my-6">
-            <h2 class="text-xl font-black text-gray-800 px-2 flex items-center gap-2">⚙️ 系統設定區</h2>
+            <!-- 全域行事曆展示每日業績與視角切換 -->
+            <div class="bento-card bg-white">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-black text-gray-800 text-sm">📅 每日營業額</h3>
+                </div>
+                
+                <!-- 視角切換器 -->
+                <div class="flex gap-1 bg-gray-100 p-1 rounded-lg mb-3 overflow-x-auto hide-scrollbar">
+                    <button @click="homeRevenueView = 'ALL'" :class="homeRevenueView === 'ALL' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'" class="flex-1 py-1 px-3 rounded-md text-xs font-bold whitespace-nowrap transition">全部</button>
+                    <button @click="homeRevenueView = 'B2B'" :class="homeRevenueView === 'B2B' ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-500'" class="flex-1 py-1 px-3 rounded-md text-xs font-bold whitespace-nowrap transition">B2B</button>
+                    <button @click="homeRevenueView = 'B2C'" :class="homeRevenueView === 'B2C' ? 'bg-purple-500 text-white shadow-sm' : 'text-gray-500'" class="flex-1 py-1 px-3 rounded-md text-xs font-bold whitespace-nowrap transition">B2C(日)</button>
+                    <button @click="homeRevenueView = 'MORNING'" :class="homeRevenueView === 'MORNING' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-500'" class="flex-1 py-1 px-3 rounded-md text-xs font-bold whitespace-nowrap transition">B2C(晨)</button>
+                </div>
 
-            <div class="bento-card border-dashed border-gray-300">
-                <h2 class="text-lg font-bold text-gray-800 mb-4">📍 預設通路與定價表設定</h2>
-                <div class="text-xs text-gray-600 space-y-4 max-h-[300px] overflow-y-auto">
-                    <div v-for="(org, orgId) in orgConfig" :key="orgId" class="border-b-2 border-gray-200 pb-4">
-                        <span class="font-black text-blue-800 text-sm block mb-2">{{ org.name }}</span>
-                        <div v-for="branch in org.branches" :key="branch.id" class="ml-2 mt-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
-                            <div class="font-bold text-gray-800 mb-2">{{ branch.name }}</div>
-                            <div class="grid grid-cols-2 gap-3 text-xs">
-                                <div>
-                                    <span class="text-gray-500 font-bold">大瓶 (進價 / 零售)</span>
-                                    <div class="flex gap-1 mt-1">
-                                        <input type="number" v-model.number="branch.prices.big.cost" class="w-full border rounded p-1 text-center font-bold">
-                                        <input type="number" v-model.number="branch.prices.big.retail" class="w-full border rounded p-1 text-center font-bold">
-                                    </div>
-                                </div>
-                                <div>
-                                    <span class="text-gray-500 font-bold">小瓶 (進價 / 零售)</span>
-                                    <div class="flex gap-1 mt-1">
-                                        <input type="number" v-model.number="branch.prices.small.cost" class="w-full border rounded p-1 text-center font-bold">
-                                        <input type="number" v-model.number="branch.prices.small.retail" class="w-full border rounded p-1 text-center font-bold">
-                                    </div>
-                                </div>
-                            </div>
+                <div class="cal-grid text-center text-[10px] font-bold text-gray-400 mb-2">
+                    <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div class="text-red-400">六</div><div class="text-red-400">日</div>
+                </div>
+                <div class="cal-grid">
+                    <div v-for="blank in homeCalPadding" class="cal-empty"></div>
+                    <div v-for="day in homeCalDaysInMonth" :key="day" class="cal-cell border border-gray-100 bg-gray-50 pointer-events-none">
+                        <div class="text-[10px] font-bold text-gray-500 text-left w-full pl-1">{{ day }}</div>
+                        <div class="flex-1 flex items-center justify-center w-full">
+                            <span v-if="getHomeDayRevenue(day) > 0" class="text-[10px] font-black bg-gray-100 px-1 rounded" 
+                                  :class="{'text-blue-600': homeRevenueView==='B2B' || homeRevenueView==='ALL', 'text-purple-600': homeRevenueView==='B2C', 'text-emerald-600': homeRevenueView==='MORNING'}">
+                                ${{ getHomeDayRevenue(day).toLocaleString() }}
+                            </span>
+                            <span v-else class="text-[9px] text-gray-300">-</span>
                         </div>
                     </div>
                 </div>
-                <button @click="saveConfigToCloud" class="w-full bg-gray-900 text-white font-black py-3 rounded-xl shadow mt-4 active:scale-95 transition">💾 儲存定價表至雲端</button>
-            </div>
-
-            <div class="bento-card border-2 border-blue-200 bg-blue-50">
-                <h2 class="text-lg font-bold text-blue-900 mb-2">📥 匯入歷史 Excel 資料</h2>
-                <label class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow active:scale-95 transition flex justify-center items-center gap-2 cursor-pointer">
-                    <span>📁 選擇並匯入檔案</span>
-                    <input type="file" accept=".xlsx, .xls" class="hidden" @change="handleFileUpload">
-                </label>
             </div>
         </div>
 
-        <!-- ================= 分頁 2: B2B 登入任務 ================= -->
-        <div v-show="activeTab === 'edit'" class="space-y-4">
-            <!-- 一鍵複製模組 -->
-            <div class="bg-blue-50 border border-blue-200 p-3 rounded-2xl flex items-center gap-2 shadow-sm" v-if="!isEditing">
-                <span class="text-sm font-black text-blue-800 whitespace-nowrap">🔄 載入舊計畫</span>
-                <input type="date" v-model="copyDateInput" class="flex-1 bg-white border border-blue-300 rounded-lg p-2 text-sm font-bold outline-none">
-                <button @click="copyFromDate" class="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg font-bold active:scale-95 transition">複製</button>
+        <!-- ================= 分頁 2: B2B 作業 (整合帳單與分離設定) ================= -->
+        <div v-show="activeTab === 'b2b'" class="space-y-4">
+            
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-2xl font-bold text-gray-800">B2B 作業</h2>
+                <button @click="showB2BConfigModal = true" class="bg-gray-800 text-white text-xs font-bold px-3 py-2 rounded-xl shadow active:scale-95 transition flex items-center gap-1">
+                    ⚙️ 通路設定
+                </button>
             </div>
 
+            <!-- 新增/編輯紀錄卡片 -->
             <div class="bento-card" :class="{'border-blue-500 shadow-blue-100 shadow-lg': isEditing}">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold text-gray-800">{{ isEditing ? '📝 編輯歷史紀錄' : '✨ 新增今日任務' }}</h2>
+                    <h2 class="text-lg font-bold text-gray-800">{{ isEditing ? '📝 編輯歷史紀錄' : '✨ 新增 B2B 任務' }}</h2>
                     <button v-if="isEditing" @click="cancelEdit" class="text-sm text-red-500 font-bold px-2 py-1 bg-red-50 rounded-md">取消編輯</button>
                 </div>
                 
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">選擇日期</label>
-                        <input type="date" v-model="form.rawDate" class="w-full border-2 border-gray-300 rounded-xl p-3 font-bold text-gray-800 bg-gray-50 outline-none">
+                        <input type="date" v-model="form.rawDate" class="w-full border-2 border-gray-300 rounded-xl p-2 font-bold text-gray-800 bg-gray-50 outline-none">
                     </div>
-
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">選擇體系/通路</label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">體系/通路</label>
                         <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
                             <label v-for="(org, orgId) in orgConfig" :key="orgId" class="cursor-pointer shrink-0">
                                 <input type="radio" v-model="currentOrgId" :value="orgId" class="sr-only org-radio">
-                                <div class="text-center font-bold px-4 py-2 border-2 border-gray-200 rounded-xl text-gray-600 transition whitespace-nowrap">
-                                    {{ org.name }}
-                                </div>
+                                <div class="text-center font-bold px-3 py-1.5 border-2 border-gray-200 rounded-xl text-gray-600 transition whitespace-nowrap text-sm">{{ org.name }}</div>
                             </label>
                         </div>
                     </div>
-
                     <div v-if="currentOrgBranches.length > 0">
-                        <label class="block text-sm font-bold text-gray-700 mb-2">選擇據點</label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">選擇據點</label>
                         <div class="flex flex-wrap gap-2">
                             <label v-for="branch in currentOrgBranches" :key="branch.id" class="cursor-pointer flex-1 min-w-[30%]">
                                 <input type="radio" v-model="currentBranchId" :value="branch.id" class="sr-only peer">
-                                <div class="text-center font-bold p-2 border-2 border-gray-200 rounded-xl text-gray-600 transition">
-                                    {{ branch.name }}
-                                </div>
+                                <div class="text-center font-bold p-1.5 border-2 border-gray-200 rounded-xl text-gray-600 transition text-sm">{{ branch.name }}</div>
                             </label>
                         </div>
                     </div>
-
-                    <div v-if="currentFormData" class="bg-gray-50 p-4 rounded-xl border-2 border-gray-200 relative">
-                        <div class="absolute -top-3 right-4 bg-yellow-100 text-yellow-800 text-[10px] font-bold px-2 py-1 rounded-full border border-yellow-300">
-                            定價依據：{{ getBranchName(currentOrgId, currentBranchId) }}
-                        </div>
-                        
-                        <!-- 配送數量 -->
-                        <div class="grid grid-cols-1 gap-4 mb-4">
+                    <div v-if="currentFormData" class="bg-gray-50 p-3 rounded-xl border-2 border-gray-200">
+                        <div class="grid grid-cols-2 gap-3 mb-3">
                             <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-1">大瓶 950g (配出)</label>
-                                <div class="flex items-center bg-white border-2 border-gray-300 rounded-xl overflow-hidden">
-                                    <button @click="currentFormData.big > 0 ? currentFormData.big-- : null" class="btn-touch bg-gray-200 text-gray-700 font-black text-2xl hover:bg-gray-300 w-14">-</button>
-                                    <input type="number" v-model.number="currentFormData.big" class="w-full bg-transparent p-2 font-black text-center text-2xl text-blue-600 outline-none">
-                                    <button @click="currentFormData.big++" class="btn-touch bg-gray-200 text-gray-700 font-black text-2xl hover:bg-gray-300 w-14">+</button>
+                                <label class="block text-xs font-bold text-blue-700 mb-1">大瓶配出</label>
+                                <div class="flex items-center bg-white border border-blue-200 rounded-lg overflow-hidden shadow-sm">
+                                    <button @click="currentFormData.big > 0 ? currentFormData.big-- : null" class="btn-touch bg-blue-50 text-blue-700 font-black flex-1">-</button>
+                                    <input type="number" v-model.number="currentFormData.big" class="w-12 bg-transparent p-1 font-black text-center text-lg text-blue-700 outline-none">
+                                    <button @click="currentFormData.big++" class="btn-touch bg-blue-50 text-blue-700 font-black flex-1">+</button>
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-1">中/小瓶 500g (配出)</label>
-                                <div class="flex items-center bg-white border-2 border-gray-300 rounded-xl overflow-hidden">
-                                    <button @click="currentFormData.small > 0 ? currentFormData.small-- : null" class="btn-touch bg-gray-200 text-gray-700 font-black text-2xl hover:bg-gray-300 w-14">-</button>
-                                    <input type="number" v-model.number="currentFormData.small" class="w-full bg-transparent p-2 font-black text-center text-2xl text-blue-600 outline-none">
-                                    <button @click="currentFormData.small++" class="btn-touch bg-gray-200 text-gray-700 font-black text-2xl hover:bg-gray-300 w-14">+</button>
+                                <label class="block text-xs font-bold text-blue-700 mb-1">小瓶配出</label>
+                                <div class="flex items-center bg-white border border-blue-200 rounded-lg overflow-hidden shadow-sm">
+                                    <button @click="currentFormData.small > 0 ? currentFormData.small-- : null" class="btn-touch bg-blue-50 text-blue-700 font-black flex-1">-</button>
+                                    <input type="number" v-model.number="currentFormData.small" class="w-12 bg-transparent p-1 font-black text-center text-lg text-blue-700 outline-none">
+                                    <button @click="currentFormData.small++" class="btn-touch bg-blue-50 text-blue-700 font-black flex-1">+</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-red-600 mb-1">大瓶退回</label>
+                                <div class="flex items-center bg-white border border-red-200 rounded-lg overflow-hidden shadow-sm">
+                                    <button @click="currentFormData.returnBig > 0 ? currentFormData.returnBig-- : null" class="btn-touch bg-red-50 text-red-600 font-black flex-1">-</button>
+                                    <input type="number" v-model.number="currentFormData.returnBig" class="w-12 bg-transparent p-1 font-black text-center text-lg text-red-600 outline-none">
+                                    <button @click="currentFormData.returnBig++" class="btn-touch bg-red-50 text-red-600 font-black flex-1">+</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-red-600 mb-1">小瓶退回</label>
+                                <div class="flex items-center bg-white border border-red-200 rounded-lg overflow-hidden shadow-sm">
+                                    <button @click="currentFormData.returnSmall > 0 ? currentFormData.returnSmall-- : null" class="btn-touch bg-red-50 text-red-600 font-black flex-1">-</button>
+                                    <input type="number" v-model.number="currentFormData.returnSmall" class="w-12 bg-transparent p-1 font-black text-center text-lg text-red-600 outline-none">
+                                    <button @click="currentFormData.returnSmall++" class="btn-touch bg-red-50 text-red-600 font-black flex-1">+</button>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- 退貨區塊 -->
-                        <div class="border-t-2 border-red-100 pt-3 bg-red-50 -mx-4 px-4 pb-2">
-                            <label class="block text-sm font-bold text-red-600 mb-2">🔄 退貨收回 (無退免填)</label>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <div class="text-xs text-gray-600 font-bold mb-1">大瓶退回</div>
-                                    <div class="flex items-center bg-white border border-red-200 rounded-lg overflow-hidden">
-                                        <button @click="currentFormData.returnBig > 0 ? currentFormData.returnBig-- : null" class="btn-touch bg-gray-100 text-gray-600 font-black text-lg w-10">-</button>
-                                        <input type="number" v-model.number="currentFormData.returnBig" class="w-full bg-transparent p-1 font-bold text-center text-lg text-red-500 outline-none">
-                                        <button @click="currentFormData.returnBig++" class="btn-touch bg-gray-100 text-gray-600 font-black text-lg w-10">+</button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 font-bold mb-1">小瓶退回</div>
-                                    <div class="flex items-center bg-white border border-red-200 rounded-lg overflow-hidden">
-                                        <button @click="currentFormData.returnSmall > 0 ? currentFormData.returnSmall-- : null" class="btn-touch bg-gray-100 text-gray-600 font-black text-lg w-10">-</button>
-                                        <input type="number" v-model.number="currentFormData.returnSmall" class="w-full bg-transparent p-1 font-bold text-center text-lg text-red-500 outline-none">
-                                        <button @click="currentFormData.returnSmall++" class="btn-touch bg-gray-100 text-gray-600 font-black text-lg w-10">+</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-4">
-                            <label class="block text-sm font-bold text-gray-700 mb-1">備註</label>
-                            <input type="text" v-model="currentFormData.note" placeholder="例如：少送1瓶..." class="w-full border-2 border-gray-300 rounded-xl p-3 font-bold text-gray-600">
+                        <div>
+                            <input type="text" v-model="currentFormData.note" placeholder="備註 (如：少送1瓶)" class="w-full border border-gray-300 rounded-lg p-2 text-sm font-bold text-gray-600 outline-none focus:border-blue-500">
                         </div>
                     </div>
-
-                    <button @click="saveRecord" class="w-full bg-blue-600 text-white font-black text-lg py-3 rounded-xl shadow-lg active:scale-95 transition flex justify-center items-center gap-2 mt-4" :disabled="isSyncing">
-                        <span>{{ isSyncing ? '☁️ 雲端同步中...' : (isEditing ? '💾 更新至 Firebase' : '💾 寫入 Firebase') }}</span>
+                    <button @click="saveRecord" class="w-full bg-blue-600 text-white font-black py-3 rounded-xl shadow-lg active:scale-95 transition flex justify-center items-center gap-2 mt-2" :disabled="isSyncing">
+                        <span>{{ isSyncing ? '☁️ 雲端同步中...' : (isEditing ? '💾 更新紀錄' : '💾 寫入紀錄') }}</span>
                     </button>
                 </div>
             </div>
-        </div>
 
-        <!-- ================= 分頁 3: B2B 帳單 ================= -->
-        <div v-show="activeTab === 'history'" class="space-y-4">
-            <div class="flex justify-between items-end px-2 mb-2">
-                <h2 class="text-2xl font-bold text-gray-800">月結帳單明細</h2>
-                <span class="text-sm font-bold text-gray-500">共 {{ dbRecords.length }} 筆</span>
-            </div>
-
-            <div class="bg-white p-3 rounded-xl border-2 border-gray-200 mb-4 shadow-sm">
-                <label class="block text-xs font-bold text-gray-500 mb-1">🔍 條件篩選 (單一據點營收分析)</label>
-                <select v-model="filterOption" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg font-bold">
-                    <option value="ALL">全部通路與據點</option>
-                    <optgroup v-for="(org, orgId) in orgConfig" :key="orgId" :label="org.name">
-                        <option v-for="branch in org.branches" :key="branch.id" :value="`${orgId}|${branch.id}`">
-                            {{ org.name }} - {{ branch.name }}
-                        </option>
-                    </optgroup>
-                </select>
-            </div>
-            
-            <div v-for="(data, month) in filteredHistory" :key="month" class="bento-card mb-4 p-0 overflow-hidden border-2 border-gray-200">
-                <div class="bg-blue-50 p-4 border-b-2 border-blue-100">
-                    <h3 class="font-black text-blue-800 text-xl mb-3">{{ month }} 結算 <span v-if="filterOption !== 'ALL'" class="text-sm text-blue-600 bg-white px-2 py-1 rounded ml-2">{{ getFilterName() }}</span></h3>
-                    <div class="grid grid-cols-3 gap-2 text-center text-sm">
-                        <div class="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
-                            <p class="text-gray-500 font-bold text-[10px] mb-1">牧場進帳(淨)</p>
-                            <p class="font-black text-green-600">${{ data.financials.ranchRevenue.toLocaleString() }}</p>
+            <!-- B2B 歷史帳單區域 (從原本 History Tab 遷移) -->
+            <div class="mt-8 border-t-2 border-gray-200 pt-4">
+                <h2 class="text-xl font-bold text-gray-800 mb-3">月結帳單明細</h2>
+                <div class="bg-white p-3 rounded-xl border-2 border-gray-200 mb-4 shadow-sm">
+                    <select v-model="filterOption" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg font-bold p-2 outline-none">
+                        <option value="ALL">全部通路與據點</option>
+                        <optgroup v-for="(org, orgId) in orgConfig" :key="orgId" :label="org.name">
+                            <option v-for="branch in org.branches" :key="branch.id" :value="`${orgId}|${branch.id}`">{{ org.name }} - {{ branch.name }}</option>
+                        </optgroup>
+                    </select>
+                </div>
+                
+                <div v-for="(data, month) in filteredHistory" :key="month" class="bento-card mb-4 p-0 overflow-hidden border-2 border-gray-200 bg-white">
+                    <div class="bg-blue-50 p-4 border-b border-blue-100">
+                        <h3 class="font-black text-blue-800 text-lg mb-2">{{ month }} <span v-if="filterOption !== 'ALL'" class="text-xs text-blue-600 bg-white px-2 py-1 rounded ml-2">{{ getFilterName() }}</span></h3>
+                        <div class="grid grid-cols-2 gap-2 text-center text-sm">
+                            <div class="bg-white p-2 rounded-lg border border-gray-100">
+                                <p class="text-gray-500 font-bold text-[10px]">牧場進帳</p>
+                                <p class="font-black text-green-600">${{ data.financials.ranchRevenue.toLocaleString() }}</p>
+                            </div>
+                            <div class="bg-white p-2 rounded-lg border border-gray-100">
+                                <p class="text-gray-500 font-bold text-[10px]">店端利潤</p>
+                                <p class="font-black text-yellow-600">${{ data.financials.storeProfit.toLocaleString() }}</p>
+                            </div>
                         </div>
-                        <div class="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
-                            <p class="text-gray-500 font-bold text-[10px] mb-1">店面銷售(淨)</p>
-                            <p class="font-black text-blue-600">${{ data.financials.storeSales.toLocaleString() }}</p>
-                        </div>
-                        <div class="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
-                            <p class="text-gray-500 font-bold text-[10px] mb-1">店端利潤</p>
-                            <p class="font-black text-yellow-600">${{ data.financials.storeProfit.toLocaleString() }}</p>
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <div v-for="record in data.records" :key="record.id" class="border-b border-gray-100 pb-3 last:border-0 last:pb-0">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-black text-sm text-gray-800">{{ record.displayDate }}</span>
+                                <button v-if="filterOption === 'ALL'" @click="editRecord(record)" class="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded font-bold">編輯</button>
+                            </div>
+                            <div class="space-y-2">
+                                <template v-for="(orgData, orgId) in record.filteredRecords" :key="orgId">
+                                    <template v-for="(branchData, branchId) in orgData" :key="branchId">
+                                        <div v-if="branchData.big > 0 || branchData.small > 0 || branchData.returnBig > 0 || branchData.returnSmall > 0" class="bg-gray-50 rounded p-1.5 flex justify-between items-center text-[10px]">
+                                            <div class="font-bold text-gray-700 truncate w-1/3">{{ getBranchName(orgId, branchId) }}</div>
+                                            <div class="flex gap-2">
+                                                <span class="text-gray-500">出:{{ branchData.big }}/{{ branchData.small }}</span>
+                                                <span v-if="branchData.returnBig > 0 || branchData.returnSmall > 0" class="text-red-400">退:{{branchData.returnBig}}/{{branchData.returnSmall}}</span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </div>
-                
-                <div class="p-4 space-y-4">
-                    <div v-for="record in data.records" :key="record.id" class="border-b-2 border-gray-200 pb-4 last:border-0 last:pb-0">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="font-black text-lg text-gray-800">{{ record.displayDate }}</span>
-                            <button v-if="filterOption === 'ALL'" @click="editRecord(record)" class="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-lg font-bold">✏️ 編輯</button>
+            </div>
+        </div>
+
+        <!-- ================= 分頁 3: B2C 業務 ================= -->
+        <div v-show="activeTab === 'b2c'" class="space-y-4">
+            <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-1 px-1">
+                <button @click="selectedB2CDayFilter = 'ALL'" :class="selectedB2CDayFilter === 'ALL' ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-200'" class="px-4 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition-colors">全部</button>
+                <button v-for="(dayStr, idx) in ['週一','週二','週三','週四','週五','週六','週日']" :key="idx"
+                        @click="selectedB2CDayFilter = (idx + 1)"
+                        :class="selectedB2CDayFilter === (idx + 1) ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-200'" 
+                        class="px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap transition-colors">
+                    {{ dayStr }}
+                </button>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+                <div v-for="c in filteredB2CCustomers" :key="c.fbKey" @click="openB2CModal(c)" class="bento-card bento-card-sm active:scale-95 transition-transform cursor-pointer flex flex-col h-full relative overflow-hidden bg-white px-2 py-2">
+                    <div class="flex items-center gap-1 mb-1.5 flex-wrap">
+                        <span class="bg-gray-800 text-white text-[9px] font-black px-1 py-0.5 rounded">{{ c.uuid }}</span>
+                        <span class="bg-indigo-100 text-indigo-700 text-[9px] font-black px-1 py-0.5 rounded truncate max-w-[50px]">{{ c.area || '未分類' }}</span>
+                    </div>
+                    <h2 class="text-xs font-black text-gray-900 leading-tight mb-2 flex-1 line-clamp-2">{{ c.address || '新客戶' }}</h2>
+                    <div class="mt-auto pt-1 border-t border-gray-100 flex justify-between items-center">
+                        <span v-if="getCustomerUnpaid(c) > 0" class="text-[9px] font-black text-red-600">欠${{ getCustomerUnpaid(c) }}</span>
+                        <span v-else class="text-[9px] font-black text-green-600">無欠款</span>
+                    </div>
+                </div>
+            </div>
+            <div v-if="filteredB2CCustomers.length === 0" class="text-center py-10 text-gray-400 font-bold text-sm">尚無資料</div>
+        </div>
+
+        <!-- ================= 分頁 3-2: B2C 晨間業務 ================= -->
+        <div v-show="activeTab === 'b2c_morning'" class="space-y-4">
+            <div v-if="b2cMorningCustomers.length === 0" class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-center shadow-sm">
+                <p class="text-sm font-bold text-emerald-800 mb-3">偵測到晨間資料庫為空，是否一鍵匯入既有客戶名單？</p>
+                <button @click="importMorningCustomers" class="bg-emerald-600 text-white text-sm font-black px-4 py-2 rounded-lg shadow active:scale-95 transition">🔄 匯入預設 54 位客戶</button>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+                <div v-for="c in b2cMorningCustomers" :key="c.fbKey" @click="openB2CMorningModal(c)" class="bento-card bento-card-sm border-emerald-200 active:scale-95 transition-transform cursor-pointer flex flex-col h-full relative overflow-hidden bg-white px-2 py-2">
+                    <div class="flex items-center gap-1 mb-1.5 flex-wrap">
+                        <span class="bg-emerald-800 text-white text-[9px] font-black px-1 py-0.5 rounded">{{ c.uuid }}</span>
+                        <span class="bg-emerald-100 text-emerald-700 text-[9px] font-black px-1 py-0.5 rounded truncate max-w-[50px]">{{ c.area || '未分類' }}</span>
+                    </div>
+                    <h2 class="text-xs font-black text-gray-900 leading-tight mb-2 flex-1 line-clamp-2">{{ c.address }}</h2>
+                    <div class="mt-auto pt-1 border-t border-gray-100 flex justify-between items-center">
+                        <span class="text-[9px] font-black text-gray-500 bg-gray-100 px-1 rounded">{{ getCycleLabel(c.cycle) }}</span>
+                        <span class="text-[9px] font-black text-emerald-600">${{ c.price }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= 分頁 4: 配送核對 ================= -->
+        <div v-show="activeTab === 'delivery'" class="space-y-4">
+            <div class="bento-card bg-white p-4">
+                <h2 class="text-lg font-black text-gray-800 mb-3">🚚 每日配送檢核表</h2>
+                <div class="flex gap-2">
+                    <input type="date" v-model="deliveryCheckDate" class="flex-1 border-2 border-gray-300 rounded-xl p-2 font-bold text-gray-800 outline-none">
+                </div>
+                <div class="mt-2 text-xs font-bold text-gray-500">自動整合 B2C(日) 與 B2C(晨) 應送名單。</div>
+            </div>
+
+            <div class="space-y-2">
+                <div v-for="task in dailyDeliveryList" :key="task.customer.fbKey" 
+                     @click="toggleDeliveryStatus(task)"
+                     class="bg-white border-2 rounded-xl p-3 flex items-center justify-between transition-all active:scale-95 cursor-pointer"
+                     :class="task.schedule.isDelivered ? 'border-green-400 opacity-60' : 'border-gray-200'">
+                    
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0" 
+                             :class="task.schedule.isDelivered ? 'border-green-500 bg-green-500 text-white' : 'border-gray-300'">
+                            <span v-if="task.schedule.isDelivered" class="text-xs font-black">✓</span>
                         </div>
-                        <div class="space-y-3">
-                            <template v-for="(orgData, orgId) in record.filteredRecords" :key="orgId">
-                                <template v-for="(branchData, branchId) in orgData" :key="branchId">
-                                    <div v-if="branchData.big > 0 || branchData.small > 0 || branchData.returnBig > 0 || branchData.returnSmall > 0" class="bg-gray-50 rounded-lg p-2 border border-gray-100">
-                                        <div class="font-bold text-gray-800 text-sm mb-1">
-                                            {{ getOrgName(orgId) }} - {{ getBranchName(orgId, branchId) }}
-                                            <span v-if="branchData.note" class="text-xs text-gray-500 font-normal ml-2">({{ branchData.note }})</span>
-                                        </div>
-                                        <div class="flex justify-between items-center text-[11px] font-bold">
-                                            <div class="flex gap-2">
-                                                <span class="text-green-700">牧: ${{ calcBranchFinancials(orgId, branchId, branchData).ranchRevenue }}</span>
-                                                <span class="text-blue-700">店: ${{ calcBranchFinancials(orgId, branchId, branchData).storeSales }}</span>
-                                            </div>
-                                            <div class="bg-gray-200 text-gray-800 px-2 py-1 rounded flex items-center gap-2">
-                                                <span>配: 大{{ branchData.big }} 小{{ branchData.small }}</span>
-                                                <span v-if="branchData.returnBig > 0 || branchData.returnSmall > 0" class="text-red-500 bg-red-100 px-1 rounded">退: 大{{branchData.returnBig || 0}} 小{{branchData.returnSmall || 0}}</span>
-                                            </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <span :class="task.type === 'morning' ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'" class="text-[9px] font-black px-1.5 py-0.5 rounded shrink-0">{{ task.customer.area }}</span>
+                                <span class="text-sm font-black text-gray-800 truncate" :class="{'line-through': task.schedule.isDelivered}">{{ task.customer.address }}</span>
+                            </div>
+                            <div class="text-[10px] text-gray-500 truncate" v-if="task.customer.note">註記: {{ task.customer.note }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-1 shrink-0 ml-2">
+                        <template v-if="task.type === 'pro'">
+                            <span v-if="task.schedule.big > 0" class="bg-yellow-50 text-yellow-700 font-black text-xs px-2 py-1 rounded border border-yellow-100">大{{task.schedule.big}}</span>
+                            <span v-if="task.schedule.small > 0" class="bg-indigo-50 text-indigo-700 font-black text-xs px-2 py-1 rounded border border-indigo-100">小{{task.schedule.small}}</span>
+                        </template>
+                        <template v-if="task.type === 'morning'">
+                            <span class="bg-emerald-50 text-emerald-700 font-black text-xs px-2 py-1 rounded border border-emerald-100">玻{{task.schedule.qty || 1}}</span>
+                        </template>
+                    </div>
+                </div>
+                
+                <div v-if="dailyDeliveryList.length === 0" class="text-center py-8 text-gray-400 font-bold text-sm">
+                    當日無配送排程
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= B2B 通路設定 Modal ================= -->
+        <div v-if="showB2BConfigModal" class="fixed inset-0 z-[100] flex flex-col justify-end">
+            <div class="modal-overlay absolute inset-0" @click="showB2BConfigModal = false"></div>
+            <div class="bottom-sheet bg-gray-100 w-full relative max-w-md mx-auto flex flex-col h-[90vh]">
+                <div class="bg-white px-4 py-3 border-b border-gray-200 sticky top-0 z-20 rounded-t-3xl shadow-sm flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">⚙️ 通路與定價設定</h2>
+                    <button @click="showB2BConfigModal = false" class="bg-gray-200 text-gray-600 w-8 h-8 rounded-full font-black flex items-center justify-center active:scale-90 shadow-sm text-sm">✕</button>
+                </div>
+                <div class="p-4 overflow-y-auto space-y-4">
+                    <div class="text-xs text-gray-600 space-y-4 p-1">
+                        <div v-for="(org, orgId) in orgConfig" :key="orgId" class="border border-gray-200 rounded-xl p-2 bg-gray-50">
+                            <span class="font-black text-blue-800 text-sm block mb-2 px-1">{{ org.name }}</span>
+                            <div v-for="branch in org.branches" :key="branch.id" class="mb-2 bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                                <div class="font-bold text-gray-800 mb-1">{{ branch.name }}</div>
+                                <div class="grid grid-cols-2 gap-2 text-[10px]">
+                                    <div>
+                                        <span class="text-gray-400 font-bold">大(進/零)</span>
+                                        <div class="flex gap-1 mt-0.5">
+                                            <input type="number" v-model.number="branch.prices.big.cost" class="w-full border rounded p-1 text-center font-bold">
+                                            <input type="number" v-model.number="branch.prices.big.retail" class="w-full border rounded p-1 text-center font-bold">
                                         </div>
                                     </div>
-                                </template>
-                            </template>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div v-if="Object.keys(filteredHistory).length === 0" class="text-center text-gray-400 font-bold py-8">
-                無相符紀錄，請確認該據點是否有配送資料。
-            </div>
-        </div>
-
-        <!-- ================= 分頁 4: B2C 高階業務中樞 ================= -->
-        <div v-show="activeTab === 'b2c'" class="space-y-4">
-
-            <!-- 視圖 A: 散客/週期客戶 雙欄總表 -->
-            <div v-show="activeB2CTab === 'customers'">
-                <div class="flex justify-between items-end mb-3 px-1">
-                    <span class="text-xs font-bold text-gray-500">點擊卡片進入詳細排程設定</span>
-                    <span class="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">共 {{ b2cCustomers.length }} 戶</span>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div v-for="c in b2cCustomers" :key="c.fbKey" @click="openB2CModal(c)" class="bento-card bento-card-sm active:scale-95 transition-transform cursor-pointer flex flex-col h-full relative overflow-hidden bg-white">
-                        
-                        <!-- 標籤列 -->
-                        <div class="flex items-center gap-1 mb-2 flex-wrap">
-                            <span class="bg-gray-800 text-white text-[10px] font-black px-1.5 py-0.5 rounded">{{ c.uuid }}</span>
-                            <span class="bg-indigo-100 text-indigo-700 text-[10px] font-black px-1.5 py-0.5 rounded">{{ c.area || '未分類' }}</span>
-                        </div>
-                        
-                        <!-- 名稱地址 -->
-                        <h2 class="text-sm font-black text-gray-900 leading-snug mb-3 flex-1">{{ c.address || '新客戶' }}</h2>
-                        
-                        <!-- 狀態列 -->
-                        <div class="mt-auto pt-2 border-t border-gray-100 flex justify-between items-center">
-                            <span v-if="getCustomerUnpaid(c) > 0" class="text-[10px] font-black text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded">
-                                未收 ${{ getCustomerUnpaid(c) }}
-                            </span>
-                            <span v-else class="text-[10px] font-black text-green-600 bg-green-50 border border-green-100 px-1.5 py-0.5 rounded">
-                                無欠款
-                            </span>
-                            <span class="text-[10px] text-gray-400 font-bold">排程:{{ Object.keys(c.schedule || {}).length }}</span>
-                        </div>
-                    </div>
-                </div>
-                <div v-if="b2cCustomers.length === 0" class="text-center py-10 text-gray-400 font-bold">尚無客戶資料，請點擊右上方新增。</div>
-            </div>
-
-            <!-- 視圖 B: 全域行事曆統計 -->
-            <div v-show="activeB2CTab === 'calendar'">
-                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 shadow-sm">
-                    <h3 class="font-black text-blue-900 mb-1">📊 {{ calYear }}年{{ calMonth + 1 }}月 預估總結 (B2C)</h3>
-                    <div class="grid grid-cols-2 gap-4 mt-2">
-                        <div>
-                            <p class="text-xs font-bold text-gray-500">總配送量</p>
-                            <p class="text-lg font-black text-blue-700">大 {{ totalMonthBig }} / 小 {{ totalMonthSmall }}</p>
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-gray-500">本月營業額</p>
-                            <p class="text-lg font-black text-green-600">${{ totalMonthRevenue }}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bento-card bg-white">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-black text-gray-800 flex items-center gap-2">
-                            <button @click="calPrevMonth" class="text-gray-400 bg-gray-100 rounded px-2 active:scale-90">&lt;</button>
-                            {{ calYear }}年 {{ calMonth + 1 }}月
-                            <button @click="calNextMonth" class="text-gray-400 bg-gray-100 rounded px-2 active:scale-90">&gt;</button>
-                        </h2>
-                    </div>
-
-                    <div class="cal-grid text-center text-[10px] font-bold text-gray-400 mb-2">
-                        <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div class="text-red-400">六</div><div class="text-red-400">日</div>
-                    </div>
-
-                    <div class="cal-grid">
-                        <div v-for="blank in calPadding" class="cal-empty"></div>
-                        <div v-for="day in calDaysInMonth" :key="day" class="cal-cell relative border" :class="getGlobalDayData(day).hasOrder ? 'bg-blue-50 border-blue-200' : 'border-gray-50'">
-                            <div class="text-[10px] font-bold text-gray-500 w-full text-left pl-1">{{ day }}</div>
-                            <div v-if="getGlobalDayData(day).hasOrder" class="flex flex-col items-center justify-center w-full mt-1">
-                                <span v-if="getGlobalDayData(day).big > 0" class="text-[10px] font-black text-yellow-600 bg-yellow-50 px-1 rounded w-full text-center">大{{ getGlobalDayData(day).big }}</span>
-                                <span v-if="getGlobalDayData(day).small > 0" class="text-[10px] font-black text-green-600 bg-green-50 px-1 rounded w-full text-center mt-0.5">小{{ getGlobalDayData(day).small }}</span>
+                                    <div>
+                                        <span class="text-gray-400 font-bold">小(進/零)</span>
+                                        <div class="flex gap-1 mt-0.5">
+                                            <input type="number" v-model.number="branch.prices.small.cost" class="w-full border rounded p-1 text-center font-bold">
+                                            <input type="number" v-model.number="branch.prices.small.retail" class="w-full border rounded p-1 text-center font-bold">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div v-if="getGlobalDayData(day).hasOrder" class="w-full text-center mt-1 border-t border-blue-100 pt-0.5">
-                                <div class="text-[9px] font-black text-gray-700">${{ getGlobalDayData(day).revenue }}</div>
+                            <div class="flex gap-2 mt-2 px-1">
+                                <input v-model="newBranchNames[orgId]" placeholder="新據點名稱" class="flex-1 border rounded p-1.5 text-xs outline-none">
+                                <button @click="addNewBranch(orgId)" class="bg-gray-200 text-gray-700 px-3 py-1 rounded text-xs font-bold whitespace-nowrap">新增</button>
                             </div>
                         </div>
                     </div>
+                    <div class="flex gap-2 border-t border-gray-200 pt-3">
+                        <input v-model="newOrgName" placeholder="新通路名稱" class="flex-1 border border-gray-300 rounded-lg p-2 text-sm outline-none">
+                        <button @click="addNewOrg" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold active:scale-95">新增</button>
+                    </div>
+                    <button @click="saveConfigToCloud" class="w-full bg-blue-100 text-blue-700 font-black py-3 rounded-xl mt-4 active:scale-95 transition">💾 儲存設定</button>
                 </div>
             </div>
         </div>
 
-        <!-- ================= 底層 Bottom Sheet Modal (B2C 詳細編輯) ================= -->
-        <div v-if="modalData" class="fixed inset-0 z-[100] flex flex-col justify-end">
+        <!-- ================= Modal: B2C Pro 詳細編輯 ================= -->
+        <div v-if="modalData && activeTab === 'b2c'" class="fixed inset-0 z-[100] flex flex-col justify-end">
             <div class="modal-overlay absolute inset-0" @click="closeB2CModal"></div>
-            
             <div class="bottom-sheet bg-gray-100 w-full relative max-w-md mx-auto flex flex-col h-[94vh]">
-                
-                <!-- Modal Header -->
-                <div class="bg-white px-4 py-4 border-b border-gray-200 sticky top-0 z-10 rounded-t-3xl shadow-sm">
+                <div class="bg-white px-4 py-3 border-b border-gray-200 sticky top-0 z-20 rounded-t-3xl shadow-sm">
                     <div class="flex justify-between items-start">
                         <div class="flex flex-col flex-1 mr-3">
                             <div class="flex gap-2 mb-1">
-                                <input type="text" v-model="modalData.uuid" @change="saveModalData" class="w-16 bg-gray-100 text-gray-800 text-[10px] font-black px-2 py-1 rounded outline-none focus:ring-2 ring-gray-300" placeholder="編號">
-                                <input type="text" v-model="modalData.area" @change="saveModalData" class="w-20 bg-indigo-50 text-indigo-700 text-[10px] font-black px-2 py-1 rounded outline-none focus:ring-2 ring-indigo-300" placeholder="地區標籤">
+                                <input type="text" v-model="modalData.uuid" @change="saveModalData" class="w-12 bg-gray-100 text-gray-800 text-[10px] font-black px-1.5 py-1 rounded outline-none" placeholder="編號">
+                                <input type="text" list="b2c-areas" v-model="modalData.area" @change="saveModalData" class="w-20 bg-indigo-50 text-indigo-700 text-[10px] font-black px-1.5 py-1 rounded outline-none" placeholder="地區">
                             </div>
-                            <input type="text" v-model="modalData.address" @change="saveModalData" class="w-full text-xl font-black text-gray-900 mt-1 bg-transparent outline-none border-b border-dashed border-gray-300 focus:border-blue-500" placeholder="輸入客戶名稱 / 地址">
+                            <input type="text" v-model="modalData.address" @change="saveModalData" class="w-full text-lg font-black text-gray-900 mt-1 bg-transparent outline-none border-b border-dashed border-gray-300" placeholder="客戶名稱 / 地址">
                         </div>
                         <div class="flex gap-2 items-center">
-                            <button @click="deleteB2CCustomer(modalData)" class="bg-red-50 text-red-500 w-8 h-8 rounded-full font-black flex items-center justify-center active:scale-90 transition shrink-0 shadow-sm">🗑</button>
-                            <button @click="closeB2CModal" class="bg-gray-100 text-gray-600 w-8 h-8 rounded-full font-black text-lg flex items-center justify-center active:scale-90 transition shrink-0 shadow-sm">✕</button>
+                            <button @click="deleteB2CCustomer(modalData)" class="bg-red-50 text-red-500 w-8 h-8 rounded-full font-black flex items-center justify-center active:scale-90 shadow-sm text-sm">🗑</button>
+                            <button @click="closeB2CModal" class="bg-gray-200 text-gray-600 w-8 h-8 rounded-full font-black flex items-center justify-center active:scale-90 shadow-sm text-sm">✕</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 overflow-y-auto space-y-4 flex-1">
+                    <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+                        <div class="flex gap-4">
+                            <div class="flex items-center gap-2 flex-1"><span class="text-[10px] font-bold text-gray-400">大瓶$</span><input type="number" v-model.number="modalData.priceBig" @change="saveModalData" class="w-full bg-gray-50 border rounded p-1 font-black text-center text-sm outline-none"></div>
+                            <div class="flex items-center gap-2 flex-1"><span class="text-[10px] font-bold text-gray-400">小瓶$</span><input type="number" v-model.number="modalData.priceSmall" @change="saveModalData" class="w-full bg-gray-50 border rounded p-1 font-black text-center text-sm outline-none"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-purple-500">
+                        <h3 class="font-black text-gray-800 mb-3 text-sm">🔄 排程工具區 (點擊日曆畫筆)</h3>
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div class="flex items-center bg-gray-50 border rounded-lg overflow-hidden h-8">
+                                <button @click="ruleBig > 0 ? ruleBig-- : null" class="btn-touch bg-gray-200 text-gray-600 font-black h-full w-8">-</button>
+                                <div class="flex-1 text-center font-black text-xs">大: {{ ruleBig }}</div>
+                                <button @click="ruleBig++" class="btn-touch bg-gray-200 text-gray-600 font-black h-full w-8">+</button>
+                            </div>
+                            <div class="flex items-center bg-gray-50 border rounded-lg overflow-hidden h-8">
+                                <button @click="ruleSmall > 0 ? ruleSmall-- : null" class="btn-touch bg-gray-200 text-gray-600 font-black h-full w-8">-</button>
+                                <div class="flex-1 text-center font-black text-xs">小: {{ ruleSmall }}</div>
+                                <button @click="ruleSmall++" class="btn-touch bg-gray-200 text-gray-600 font-black h-full w-8">+</button>
+                            </div>
+                        </div>
+                        <div class="flex justify-between gap-1 mb-3">
+                            <label v-for="(day, index) in ['一','二','三','四','五','六','日']" :key="index" class="weekday-checkbox flex-1 cursor-pointer">
+                                <input type="checkbox" :value="index + 1" v-model="ruleDays" class="sr-only">
+                                <div class="text-center py-1 rounded text-[10px] font-black border bg-gray-50 text-gray-400">{{ day }}</div>
+                            </label>
+                        </div>
+                        <div class="flex gap-2">
+                            <button @click="applyRule(4)" class="flex-1 bg-purple-600 text-white font-black py-1.5 rounded text-[10px] active:scale-95">套用 4 週</button>
+                            <button @click="applyRule(8)" class="flex-1 bg-purple-600 text-white font-black py-1.5 rounded text-[10px] active:scale-95">套用 8 週</button>
+                            <button @click="applyRule(12)" class="flex-1 bg-purple-600 text-white font-black py-1.5 rounded text-[10px] active:scale-95">套用 12 週</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-black text-gray-800 text-xs">📅 連續排程 (長按切換繳費)</h3>
+                        </div>
+                        <div class="space-y-6">
+                            <div v-for="mBlock in modalCalendarBlocks" :key="mBlock.key">
+                                <h4 class="font-black text-blue-900 text-sm mb-1 px-1">{{ mBlock.year }}年 {{ mBlock.month + 1 }}月</h4>
+                                <div class="cal-grid text-center text-[9px] font-bold text-gray-400 mb-1">
+                                    <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div class="text-red-400">六</div><div class="text-red-400">日</div>
+                                </div>
+                                <div class="cal-grid">
+                                    <div v-for="blank in mBlock.padding" class="cal-empty"></div>
+                                    <div v-for="day in mBlock.days" :key="day" 
+                                         @pointerdown="startPress($event, mBlock.year, mBlock.month, day)"
+                                         @pointerup="endPress($event, mBlock.year, mBlock.month, day)"
+                                         @pointerleave="cancelPress" @pointercancel="cancelPress"
+                                         class="cal-cell relative" :class="getCalCellClass(mBlock.year, mBlock.month, day)">
+                                        <span class="text-[9px] font-bold opacity-70 absolute top-0.5 left-1">{{ day }}</span>
+                                        <div v-if="getModalDayData(mBlock.year, mBlock.month, day) && (getModalDayData(mBlock.year, mBlock.month, day).big > 0 || getModalDayData(mBlock.year, mBlock.month, day).small > 0)" 
+                                             class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full border border-white"
+                                             :class="getModalDayData(mBlock.year, mBlock.month, day).isPaid ? 'bg-green-500' : 'bg-red-500'">
+                                        </div>
+                                        <div v-if="getModalDayData(mBlock.year, mBlock.month, day) && getModalDayData(mBlock.year, mBlock.month, day).isActive" class="flex flex-col items-center mt-1 w-full pointer-events-none">
+                                            <div v-if="getModalDayData(mBlock.year, mBlock.month, day).big > 0" class="text-[9px] font-black text-yellow-600 leading-none">大{{ getModalDayData(mBlock.year, mBlock.month, day).big }}</div>
+                                            <div v-if="getModalDayData(mBlock.year, mBlock.month, day).small > 0" class="text-[9px] font-black text-green-600 leading-none mt-0.5">小{{ getModalDayData(mBlock.year, mBlock.month, day).small }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= Modal: B2C 晨間設定 ================= -->
+        <div v-if="morningModalData && activeTab === 'b2c_morning'" class="fixed inset-0 z-[100] flex flex-col justify-end">
+            <div class="modal-overlay absolute inset-0" @click="closeB2CMorningModal"></div>
+            <div class="bottom-sheet bg-gray-100 w-full relative max-w-md mx-auto flex flex-col h-[94vh]">
+                <div class="bg-white px-4 py-3 border-b border-gray-200 sticky top-0 z-20 rounded-t-3xl shadow-sm">
+                    <div class="flex justify-between items-start">
+                        <div class="flex flex-col flex-1 mr-3">
+                            <div class="flex gap-2 mb-1">
+                                <input type="text" v-model="morningModalData.uuid" @change="saveMorningModalData" class="w-16 bg-gray-100 text-gray-800 text-xs font-black px-2 py-1 rounded outline-none" placeholder="編號">
+                                <input type="text" list="b2c-areas" v-model="morningModalData.area" @change="saveMorningModalData" class="w-24 bg-emerald-50 text-emerald-700 text-xs font-black px-2 py-1 rounded outline-none" placeholder="地區">
+                            </div>
+                            <input type="text" v-model="morningModalData.address" @change="saveMorningModalData" class="w-full text-xl font-black text-gray-900 mt-1 bg-transparent outline-none border-b border-dashed border-gray-300" placeholder="客戶名稱 / 地址">
+                        </div>
+                        <div class="flex gap-2 items-center">
+                            <button @click="deleteB2CMorningCustomer(morningModalData)" class="bg-red-50 text-red-500 w-8 h-8 rounded-full font-black flex items-center justify-center active:scale-90 shadow-sm text-sm">🗑</button>
+                            <button @click="closeB2CMorningModal" class="bg-gray-200 text-gray-600 w-8 h-8 rounded-full font-black flex items-center justify-center active:scale-90 shadow-sm text-sm">✕</button>
                         </div>
                     </div>
                 </div>
 
                 <div class="p-4 overflow-y-auto space-y-4 flex-1">
                     
-                    <!-- 專屬單價 & 複製 -->
-                    <div class="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs font-bold text-gray-500">⚙️ 專屬單價</span>
-                            <button @click="cloneB2CCustomer(modalData)" class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-1 rounded font-bold shadow-sm active:scale-90 transition">
-                                📄 複製此客
-                            </button>
-                        </div>
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-emerald-500">
+                        <h3 class="font-black text-gray-800 mb-3 text-sm">📦 玻璃瓶基本設定 (28~35元)</h3>
                         <div class="flex gap-4">
                             <div class="flex items-center gap-2 flex-1">
-                                <span class="text-xs font-bold text-gray-400">大瓶</span>
-                                <input type="number" v-model.number="modalData.priceBig" @change="saveModalData" class="w-full bg-gray-50 border border-gray-200 rounded p-1.5 font-black text-center text-sm text-blue-700 outline-none">
+                                <span class="text-xs font-bold text-gray-500">單價$</span>
+                                <input type="number" min="28" max="35" v-model.number="morningModalData.price" @change="saveMorningModalData" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-1.5 font-black text-center text-sm outline-none focus:border-emerald-500">
                             </div>
                             <div class="flex items-center gap-2 flex-1">
-                                <span class="text-xs font-bold text-gray-400">小瓶</span>
-                                <input type="number" v-model.number="modalData.priceSmall" @change="saveModalData" class="w-full bg-gray-50 border border-gray-200 rounded p-1.5 font-black text-center text-sm text-blue-700 outline-none">
+                                <span class="text-xs font-bold text-gray-500">數量</span>
+                                <input type="number" min="1" v-model.number="morningModalData.qty" @change="saveMorningModalData" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-1.5 font-black text-center text-sm outline-none focus:border-emerald-500">
                             </div>
                         </div>
                     </div>
 
-                    <!-- 規律設定 -->
-                    <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm border-l-4 border-l-purple-500">
-                        <h3 class="font-black text-gray-800 mb-3 flex items-center gap-2 text-sm">🔄 常態配送規律設定 (畫筆顏色)</h3>
-                        
-                        <div class="grid grid-cols-2 gap-3 mb-3">
-                            <div class="flex items-center bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
-                                <button @click="ruleBig > 0 ? ruleBig-- : null" class="btn-touch bg-gray-100 text-gray-600 font-black">-</button>
-                                <div class="w-full text-center font-black text-gray-800 text-sm">大: {{ ruleBig }}</div>
-                                <button @click="ruleBig++" class="btn-touch bg-gray-100 text-gray-600 font-black">+</button>
-                            </div>
-                            <div class="flex items-center bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
-                                <button @click="ruleSmall > 0 ? ruleSmall-- : null" class="btn-touch bg-gray-100 text-gray-600 font-black">-</button>
-                                <div class="w-full text-center font-black text-gray-800 text-sm">小: {{ ruleSmall }}</div>
-                                <button @click="ruleSmall++" class="btn-touch bg-gray-100 text-gray-600 font-black">+</button>
-                            </div>
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="font-black text-gray-800 mb-3 text-sm">🔄 1. 選擇配送週期</h3>
+                        <div class="grid grid-cols-4 gap-2 mb-4">
+                            <label v-for="cy in cyclesList" :key="cy.value" class="cycle-radio cursor-pointer">
+                                <input type="radio" :value="cy.value" v-model="morningModalData.cycle" @change="saveMorningModalData" class="sr-only">
+                                <div class="text-center py-2 rounded-lg text-xs font-black border-2 border-gray-100 bg-gray-50 text-gray-500 transition-colors">{{ cy.label }}</div>
+                            </label>
                         </div>
 
-                        <div class="mb-4">
-                            <label class="block text-[10px] font-bold text-gray-500 mb-1">勾選固定配送日</label>
-                            <div class="flex justify-between gap-1">
-                                <label v-for="(day, index) in ['一','二','三','四','五','六','日']" :key="index" class="weekday-checkbox flex-1 cursor-pointer">
-                                    <input type="checkbox" :value="index + 1" v-model="ruleDays" class="sr-only">
-                                    <div class="text-center py-1.5 rounded-lg text-xs font-black border border-gray-200 bg-gray-50 text-gray-400 transition-colors">
-                                        {{ day }}
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-
+                        <h3 class="font-black text-gray-800 mb-2 text-sm border-t pt-3">📅 2. 依週期生成排程</h3>
                         <div class="flex gap-2">
-                            <button @click="applyRule(4)" class="flex-1 bg-purple-600 text-white font-black py-2 rounded-xl shadow active:scale-95 transition text-xs">⚡ 4 週</button>
-                            <button @click="applyRule(8)" class="flex-1 bg-purple-600 text-white font-black py-2 rounded-xl shadow active:scale-95 transition text-xs">⚡ 8 週</button>
-                            <button @click="applyRule(12)" class="flex-1 bg-purple-600 text-white font-black py-2 rounded-xl shadow active:scale-95 transition text-xs">⚡ 12 週</button>
+                            <input type="month" v-model="morningApplyMonthStr" class="flex-1 bg-gray-50 border border-gray-300 rounded-lg p-2 font-bold text-sm outline-none">
+                            <button @click="applyMorningCycleToMonth" class="bg-emerald-600 text-white px-4 py-2 rounded-lg font-black text-sm active:scale-95 shadow">生成此月排程</button>
                         </div>
+                        <p class="text-[10px] text-gray-400 mt-1">※ 必須產生排程，系統才能準確計算當月營收與配送名單。</p>
                     </div>
 
-                    <!-- 視覺化日曆與長按互動 -->
-                    <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
-                        <div class="flex justify-between items-center mb-3">
-                            <h3 class="font-black text-gray-800 text-sm">📅 行事曆 (點擊:畫筆 / 長按:收費)</h3>
-                            <div class="flex bg-gray-100 rounded-lg p-1">
-                                <button @click="calPrevMonth" class="w-6 h-6 flex items-center justify-center text-gray-600 font-black hover:bg-gray-200 rounded active:scale-90">&lt;</button>
-                                <span class="font-black text-xs text-blue-900 flex items-center px-2">{{ calYear }}年{{ calMonth + 1 }}月</span>
-                                <button @click="calNextMonth" class="w-6 h-6 flex items-center justify-center text-gray-600 font-black hover:bg-gray-200 rounded active:scale-90">&gt;</button>
-                            </div>
+                    <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-black text-gray-800 text-xs">📅 排程檢視與手動調整 (長按切換繳費)</h3>
                         </div>
-
-                        <div class="cal-grid text-center text-[10px] font-bold text-gray-400 mb-1">
-                            <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div class="text-red-400">六</div><div class="text-red-400">日</div>
-                        </div>
-
-                        <div class="cal-grid">
-                            <div v-for="blank in calPadding" class="cal-empty"></div>
-                            <div v-for="day in calDaysInMonth" :key="day" 
-                                 @pointerdown="startPress($event, day)"
-                                 @pointerup="endPress($event, day)"
-                                 @pointerleave="cancelPress"
-                                 @pointercancel="cancelPress"
-                                 class="cal-cell relative"
-                                 :class="getCalCellClass(day)">
-                                
-                                <span class="text-[10px] font-bold opacity-70 absolute top-1 left-1.5">{{ day }}</span>
-                                
-                                <div v-if="getModalDayData(day) && (getModalDayData(day).big > 0 || getModalDayData(day).small > 0)" 
-                                     class="absolute top-1 right-1 w-2 h-2 rounded-full border border-white shadow-sm"
-                                     :class="getModalDayData(day).isPaid ? 'bg-green-500' : 'bg-red-500'">
+                        <div class="space-y-6">
+                            <div v-for="mBlock in morningCalendarBlocks" :key="mBlock.key">
+                                <h4 class="font-black text-emerald-900 text-sm mb-1 px-1">{{ mBlock.year }}年 {{ mBlock.month + 1 }}月</h4>
+                                <div class="cal-grid text-center text-[9px] font-bold text-gray-400 mb-1">
+                                    <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div class="text-red-400">六</div><div class="text-red-400">日</div>
                                 </div>
-
-                                <div v-if="getModalDayData(day) && getModalDayData(day).isActive" class="flex flex-col items-center mt-2 w-full px-1 pointer-events-none">
-                                    <div v-if="getModalDayData(day).big > 0" class="text-[10px] font-black text-yellow-600 leading-tight">大{{ getModalDayData(day).big }}</div>
-                                    <div v-if="getModalDayData(day).small > 0" class="text-[10px] font-black text-green-600 leading-tight">小{{ getModalDayData(day).small }}</div>
-                                    <div v-if="getModalDayData(day).big === 0 && getModalDayData(day).small === 0" class="text-xs font-black text-gray-500 leading-tight">⏸️</div>
+                                <div class="cal-grid">
+                                    <div v-for="blank in mBlock.padding" class="cal-empty"></div>
+                                    <div v-for="day in mBlock.days" :key="day" 
+                                         @pointerdown="startMorningPress($event, mBlock.year, mBlock.month, day)"
+                                         @pointerup="endMorningPress($event, mBlock.year, mBlock.month, day)"
+                                         @pointerleave="cancelMorningPress" @pointercancel="cancelMorningPress"
+                                         class="cal-cell relative" :class="getMorningCalCellClass(mBlock.year, mBlock.month, day)">
+                                        <span class="text-[9px] font-bold opacity-70 absolute top-0.5 left-1">{{ day }}</span>
+                                        
+                                        <!-- Paid Indicator -->
+                                        <div v-if="getMorningModalDayData(mBlock.year, mBlock.month, day) && getMorningModalDayData(mBlock.year, mBlock.month, day).qty > 0" 
+                                             class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full border border-white"
+                                             :class="getMorningModalDayData(mBlock.year, mBlock.month, day).isPaid ? 'bg-green-500' : 'bg-red-500'">
+                                        </div>
+                                        
+                                        <!-- Qty display -->
+                                        <div v-if="getMorningModalDayData(mBlock.year, mBlock.month, day) && getMorningModalDayData(mBlock.year, mBlock.month, day).qty > 0" class="flex flex-col items-center mt-1.5 w-full pointer-events-none">
+                                            <div class="text-[10px] font-black text-emerald-700 leading-none">玻{{ getMorningModalDayData(mBlock.year, mBlock.month, day).qty }}</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 帳務結清 -->
-                    <div v-if="getCustomerUnpaid(modalData) > 0" class="bg-red-50 border border-red-200 p-3 rounded-2xl flex justify-between items-center shadow-sm">
+                    <div v-if="getMorningCustomerUnpaid(morningModalData) > 0" class="bg-red-50 border border-red-200 p-3 rounded-xl flex justify-between items-center shadow-sm">
                         <div>
-                            <p class="text-[10px] font-bold text-red-500 mb-0.5">總未收款</p>
-                            <p class="text-xl font-black text-red-700">${{ getCustomerUnpaid(modalData) }}</p>
+                            <p class="text-[9px] font-bold text-red-500">總未收款</p>
+                            <p class="text-lg font-black text-red-700">${{ getMorningCustomerUnpaid(morningModalData) }}</p>
                         </div>
-                        <button @click="settleAllUnpaid" class="bg-green-500 text-white text-sm font-black px-3 py-2 rounded-xl shadow active:scale-95 transition flex items-center gap-1">
-                            💰 一鍵結清
-                        </button>
+                        <button @click="settleMorningAllUnpaid" class="bg-green-500 text-white text-xs font-black px-3 py-1.5 rounded shadow active:scale-95 transition">一鍵結清</button>
                     </div>
 
-                    <!-- 備註紀錄 -->
-                    <div class="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm mb-6">
-                        <h3 class="font-black text-gray-800 mb-2 text-sm flex items-center gap-1">📝 備註紀錄</h3>
-                        <textarea v-model="modalData.note" @change="saveModalData" rows="2" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm font-bold text-gray-700 outline-none focus:border-blue-400" placeholder="例如：警衛代收、轉帳後五碼..."></textarea>
+                    <div class="bg-white p-3 rounded-xl border shadow-sm">
+                        <textarea v-model="morningModalData.note" @change="saveMorningModalData" rows="2" class="w-full bg-gray-50 border rounded p-2 text-xs font-bold outline-none" placeholder="備註事項 (信箱、密碼等)"></textarea>
                     </div>
-
                 </div>
             </div>
         </div>
 
-        <!-- ================= 全域底部導覽列 ================= -->
+        <!-- ================= 全域底部導覽列 (5 欄) ================= -->
         <nav class="fixed bottom-0 left-0 w-full bg-white border-t-2 border-gray-200 pb-8 pt-2 px-1 z-50">
             <div class="max-w-md mx-auto flex justify-between">
-                <button @click="activeTab = 'daily'" :class="{'text-blue-600': activeTab === 'daily', 'text-gray-400': activeTab !== 'daily'}" class="flex-1 flex flex-col items-center font-bold btn-touch">
-                    <span class="text-2xl mb-1">🚛</span><span class="text-[10px]">首頁/設定</span>
+                <button @click="activeTab = 'home'" :class="{'text-blue-600': activeTab === 'home', 'text-gray-400': activeTab !== 'home'}" class="flex-1 flex flex-col items-center font-bold btn-touch">
+                    <span class="text-lg mb-0.5">📊</span><span class="text-[9px]">首頁</span>
                 </button>
-                <button @click="activeTab = 'edit'" :class="{'text-blue-600': activeTab === 'edit', 'text-gray-400': activeTab !== 'edit'}" class="flex-1 flex flex-col items-center font-bold btn-touch">
-                    <span class="text-2xl mb-1">✏️</span><span class="text-[10px]">登入</span>
-                </button>
-                <button @click="activeTab = 'history'" :class="{'text-blue-600': activeTab === 'history', 'text-gray-400': activeTab !== 'history'}" class="flex-1 flex flex-col items-center font-bold btn-touch">
-                    <span class="text-2xl mb-1">📅</span><span class="text-[10px]">帳單</span>
+                <button @click="activeTab = 'b2b'" :class="{'text-blue-600': activeTab === 'b2b', 'text-gray-400': activeTab !== 'b2b'}" class="flex-1 flex flex-col items-center font-bold btn-touch">
+                    <span class="text-lg mb-0.5">🏢</span><span class="text-[9px]">B2B</span>
                 </button>
                 <button @click="activeTab = 'b2c'" :class="{'text-blue-600': activeTab === 'b2c', 'text-gray-400': activeTab !== 'b2c'}" class="flex-1 flex flex-col items-center font-bold btn-touch">
-                    <span class="text-2xl mb-1">🤝</span><span class="text-[10px]">B2C業務</span>
+                    <span class="text-lg mb-0.5">🤝</span><span class="text-[9px]">B2C</span>
+                </button>
+                <button @click="activeTab = 'b2c_morning'" :class="{'text-emerald-600': activeTab === 'b2c_morning', 'text-gray-400': activeTab !== 'b2c_morning'}" class="flex-1 flex flex-col items-center font-bold btn-touch">
+                    <span class="text-lg mb-0.5">🌅</span><span class="text-[9px]">晨間</span>
+                </button>
+                <button @click="activeTab = 'delivery'" :class="{'text-blue-600': activeTab === 'delivery', 'text-gray-400': activeTab !== 'delivery'}" class="flex-1 flex flex-col items-center font-bold btn-touch">
+                    <span class="text-lg mb-0.5">🚚</span><span class="text-[9px]">出車</span>
                 </button>
             </div>
         </nav>
@@ -619,51 +669,64 @@
             apiKey: "AIzaSyB6D9vh6J2mdnjz2VXEVe99oi7oLF-irFo",
             authDomain: "crm-ts-1225-001.firebaseapp.com",
             databaseURL: "https://crm-ts-1225-001-default-rtdb.firebaseio.com",
-            projectId: "crm-ts-1225-001",
-            storageBucket: "crm-ts-1225-001.firebasestorage.app",
-            messagingSenderId: "925760221722",
-            appId: "1:925760221722:web:1aeda0b82f1f16b8dcd7a3"
+            projectId: "crm-ts-1225-001"
         };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         
         const DAILY_DB_PATH = 'daily_tasks'; 
         const CONFIG_DB_PATH = 'config/orgs';
-        const B2C_PRO_PATH = 'b2c_pro_customers'; // 合併後的高階 B2C 儲存節點
+        const B2C_PRO_PATH = 'b2c_pro_customers'; 
+        const MORNING_DB_PATH = 'b2c_morning_customers';
 
         createApp({
             setup() {
-                // UI 狀態
-                const activeTab = ref('edit'); 
-                const activeB2CTab = ref('customers'); 
+                const activeTab = ref('home'); 
                 const isSyncing = ref(false);
                 
-                // ================= B2B 邏輯 =================
-                const orgConfig = ref({
-                    tucheng: { name: '土城農會', branches: [
-                        { id: 'hq', name: '本會', prices: { big: { cost: 136, retail: 160 }, small: { cost: 80, retail: 100 } } },
-                        { id: 'qingshui', name: '清水', prices: { big: { cost: 136, retail: 160 }, small: { cost: 80, retail: 100 } } },
-                        { id: 'shop', name: '小舖', prices: { big: { cost: 136, retail: 160 }, small: { cost: 80, retail: 100 } } }
-                    ]},
-                    sanxia: { name: '三峽農會', branches: [
-                        { id: 'bicui', name: '碧萃', prices: { big: { cost: 140, retail: 170 }, small: { cost: 85, retail: 105 } } },
-                        { id: 'direct', name: '直賣所', prices: { big: { cost: 140, retail: 170 }, small: { cost: 85, retail: 105 } } }
-                    ]},
-                    linkou: { name: '林口農會', branches: [{ id: 'hq', name: '本會', prices: { big: { cost: 136, retail: 165 }, small: { cost: 80, retail: 100 } } }]},
-                    sanchong: { name: '三重農會', branches: [{ id: 'supermarket', name: '超市', prices: { big: { cost: 136, retail: 165 }, small: { cost: 80, retail: 100 } } }]},
-                    bali: { name: '八里農會', branches: [{ id: 'supermarket', name: '超市', prices: { big: { cost: 136, retail: 165 }, small: { cost: 80, retail: 100 } } }]},
-                    groupbuy: { name: '團購', branches: [
-                        { id: 'zhengdang', name: '正當冰', prices: { big: { cost: 130, retail: 150 }, small: { cost: 75, retail: 95 } } },
-                        { id: 'shengyuan', name: '盛源', prices: { big: { cost: 135, retail: 155 }, small: { cost: 78, retail: 98 } } },
-                        { id: 'qiadaohaochu', name: '恰到好處本舖', prices: { big: { cost: 130, retail: 150 }, small: { cost: 75, retail: 95 } } },
-                        { id: 'tashi', name: '踏石生活', prices: { big: { cost: 130, retail: 150 }, small: { cost: 75, retail: 95 } } }
-                    ]}
+                // ================= 首頁全域日曆 =================
+                const homeCalYear = ref(new Date().getFullYear());
+                const homeCalMonth = ref(new Date().getMonth());
+                const homeRevenueView = ref('ALL'); // 'ALL', 'B2B', 'B2C', 'MORNING'
+                
+                const homeCalPadding = computed(() => {
+                    let firstDay = new Date(homeCalYear.value, homeCalMonth.value, 1).getDay();
+                    return firstDay === 0 ? 6 : firstDay - 1; 
                 });
+                const homeCalDaysInMonth = computed(() => new Date(homeCalYear.value, homeCalMonth.value + 1, 0).getDate());
+                const homeCalPrevMonth = () => { if (homeCalMonth.value === 0) { homeCalMonth.value = 11; homeCalYear.value--; } else { homeCalMonth.value--; } };
+                const homeCalNextMonth = () => { if (homeCalMonth.value === 11) { homeCalMonth.value = 0; homeCalYear.value++; } else { homeCalMonth.value++; } };
+                const getFormatDateStrGlobal = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+                // ================= B2B 邏輯 =================
+                const showB2BConfigModal = ref(false);
+                const orgConfig = ref({});
+                const newOrgName = ref('');
+                const newBranchNames = ref({});
+
+                const addNewOrg = () => {
+                    if (!newOrgName.value.trim()) return;
+                    const orgId = 'org_' + Date.now();
+                    orgConfig.value[orgId] = { name: newOrgName.value.trim(), branches: [] };
+                    newOrgName.value = '';
+                };
+
+                const addNewBranch = (orgId) => {
+                    const branchName = newBranchNames.value[orgId]?.trim();
+                    if (!branchName) return;
+                    const branchId = 'br_' + Date.now();
+                    if (!orgConfig.value[orgId].branches) orgConfig.value[orgId].branches = [];
+                    orgConfig.value[orgId].branches.push({
+                        id: branchId, name: branchName,
+                        prices: { big: {cost: 0, retail: 0}, small: {cost: 0, retail: 0} }
+                    });
+                    newBranchNames.value[orgId] = '';
+                };
 
                 const saveConfigToCloud = async () => {
                     isSyncing.value = true;
-                    try { await set(fbRef(db, CONFIG_DB_PATH), orgConfig.value); alert('✅ 定價表已成功儲存至雲端！'); } 
-                    catch (e) { alert('儲存失敗，請檢查網路連線。'); }
+                    try { await set(fbRef(db, CONFIG_DB_PATH), orgConfig.value); alert('✅ 通路與定價表設定已儲存！'); showB2BConfigModal.value = false; } 
+                    catch (e) { alert('儲存失敗。'); }
                     isSyncing.value = false;
                 };
 
@@ -673,8 +736,14 @@
                 const isEditing = computed(() => currentEditId.value !== null);
                 const filterOption = ref('ALL');
 
-                const currentOrgId = ref('sanxia');
-                const currentBranchId = ref('bicui');
+                const currentOrgId = ref(null);
+                const currentBranchId = ref(null);
+
+                watch(orgConfig, (newConfig) => {
+                    if (!currentOrgId.value && Object.keys(newConfig).length > 0) {
+                        currentOrgId.value = Object.keys(newConfig)[0];
+                    }
+                }, {deep: true, immediate: true});
 
                 watch(currentOrgId, (newOrgId) => {
                     if (orgConfig.value[newOrgId] && orgConfig.value[newOrgId].branches.length > 0) {
@@ -693,36 +762,32 @@
                     const newForm = { rawDate: getTodayStr(), records: {} };
                     for (const [orgId, orgData] of Object.entries(orgConfig.value)) {
                         newForm.records[orgId] = {};
-                        orgData.branches.forEach(branch => { 
-                            newForm.records[orgId][branch.id] = { big: 0, small: 0, returnBig: 0, returnSmall: 0, note: '' }; 
-                        });
+                        if(orgData.branches) {
+                            orgData.branches.forEach(branch => { 
+                                newForm.records[orgId][branch.id] = { big: 0, small: 0, returnBig: 0, returnSmall: 0, note: '' }; 
+                            });
+                        }
                     }
                     return newForm;
                 };
 
-                const form = ref(createEmptyForm());
-                const currentFormData = computed(() => form.value.records[currentOrgId.value]?.[currentBranchId.value] || null);
-
-                const formatDateTitle = (dateString) => {
-                    if (!dateString) return '';
-                    const d = new Date(dateString);
-                    const m = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    const week = ['日','一','二','三','四','五','六'][d.getDay()];
-                    return `${m}/${day}週${week}`;
-                };
-                const formattedDateTitle = computed(() => formatDateTitle(form.value.rawDate));
+                const form = ref({ rawDate: getTodayStr(), records: {} });
+                
+                const currentFormData = computed(() => {
+                    if (!currentOrgId.value || !currentBranchId.value) return null;
+                    if (!form.value.records[currentOrgId.value]) form.value.records[currentOrgId.value] = {};
+                    if (!form.value.records[currentOrgId.value][currentBranchId.value]) {
+                        form.value.records[currentOrgId.value][currentBranchId.value] = { big: 0, small: 0, returnBig: 0, returnSmall: 0, note: '' };
+                    }
+                    return form.value.records[currentOrgId.value][currentBranchId.value];
+                });
 
                 const calcBranchFinancials = (orgId, branchId, branchData) => {
-                    const branchConfig = orgConfig.value[orgId]?.branches.find(b => b.id === branchId);
+                    const branchConfig = orgConfig.value[orgId]?.branches?.find(b => b.id === branchId);
                     if (!branchConfig) return { storeSales: 0, ranchRevenue: 0, storeProfit: 0 };
                     const prices = branchConfig.prices;
-                    const big = Number(branchData.big) || 0;
-                    const small = Number(branchData.small) || 0;
-                    const retBig = Number(branchData.returnBig) || 0;
-                    const retSmall = Number(branchData.returnSmall) || 0;
-                    const netBig = Math.max(0, big - retBig);
-                    const netSmall = Math.max(0, small - retSmall);
+                    const netBig = Math.max(0, (Number(branchData.big) || 0) - (Number(branchData.returnBig) || 0));
+                    const netSmall = Math.max(0, (Number(branchData.small) || 0) - (Number(branchData.returnSmall) || 0));
                     const calcSales = (netBig * prices.big.retail) + (netSmall * prices.small.retail);
                     const calcRev = (netBig * prices.big.cost) + (netSmall * prices.small.cost);
                     return { storeSales: calcSales, ranchRevenue: calcRev, storeProfit: calcSales - calcRev };
@@ -730,6 +795,8 @@
 
                 const calcDailyTotals = (recordData, specificOrg = null, specificBranch = null) => {
                     let totalStoreSales = 0, totalRanchRevenue = 0, totalStoreProfit = 0, netBigCount = 0, netSmallCount = 0;
+                    if(!recordData.records) return { financials: { storeSales: 0, ranchRevenue: 0, storeProfit: 0 }, totals: { big: 0, small: 0 } };
+                    
                     for (const [orgId, branches] of Object.entries(recordData.records)) {
                         if (specificOrg && orgId !== specificOrg) continue;
                         for (const [branchId, branchData] of Object.entries(branches)) {
@@ -738,18 +805,12 @@
                             totalStoreSales += fin.storeSales;
                             totalRanchRevenue += fin.ranchRevenue;
                             totalStoreProfit += fin.storeProfit;
-                            const netBig = Math.max(0, (Number(branchData.big) || 0) - (Number(branchData.returnBig) || 0));
-                            const netSmall = Math.max(0, (Number(branchData.small) || 0) - (Number(branchData.returnSmall) || 0));
-                            netBigCount += netBig;
-                            netSmallCount += netSmall;
+                            netBigCount += Math.max(0, (Number(branchData.big) || 0) - (Number(branchData.returnBig) || 0));
+                            netSmallCount += Math.max(0, (Number(branchData.small) || 0) - (Number(branchData.returnSmall) || 0));
                         }
                     }
                     return { financials: { storeSales: totalStoreSales, ranchRevenue: totalRanchRevenue, storeProfit: totalStoreProfit }, totals: { big: netBigCount, small: netSmallCount } };
                 };
-
-                const currentFormTotals = computed(() => calcDailyTotals(form.value));
-                const totalCurrentBig = computed(() => currentFormTotals.value.totals.big);
-                const totalCurrentSmall = computed(() => currentFormTotals.value.totals.small);
 
                 const filteredHistory = computed(() => {
                     const sorted = [...dbRecords.value].sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
@@ -766,72 +827,22 @@
                             displayRecord.filteredRecords = { [targetOrg]: { [targetBranch]: displayRecord.records[targetOrg][targetBranch] } };
                         } else { displayRecord.filteredRecords = displayRecord.records; }
                         groups[monthKey].records.push(displayRecord);
-                        groups[monthKey].financials.storeSales += filteredStats.financials.storeSales;
                         groups[monthKey].financials.ranchRevenue += filteredStats.financials.ranchRevenue;
                         groups[monthKey].financials.storeProfit += filteredStats.financials.storeProfit;
                     });
                     return groups;
                 });
 
-                const availableMonths = computed(() => {
-                    const months = new Set();
-                    dbRecords.value.forEach(record => {
-                        const d = new Date(record.rawDate);
-                        months.add(`${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, '0')}月`);
-                    });
-                    const arr = Array.from(months).sort().reverse();
-                    if(arr.length === 0) {
-                        const d = new Date();
-                        arr.push(`${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, '0')}月`);
-                    }
-                    return arr;
-                });
-                
-                const currentMonthIndex = ref(0);
-                const displayMonthTitle = computed(() => availableMonths.value[currentMonthIndex.value] || '無資料');
-                const prevMonth = () => { if (currentMonthIndex.value < availableMonths.value.length - 1) currentMonthIndex.value++; }; 
-                const nextMonth = () => { if (currentMonthIndex.value > 0) currentMonthIndex.value--; };
-
-                const selectedMonthStats = computed(() => {
-                    let rev = 0, sales = 0, prof = 0;
-                    dbRecords.value.forEach(record => {
-                        const d = new Date(record.rawDate);
-                        const mKey = `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, '0')}月`;
-                        if (mKey === displayMonthTitle.value) {
-                             rev += record.financials.ranchRevenue;
-                             sales += record.financials.storeSales;
-                             prof += record.financials.storeProfit;
-                        }
-                    });
-                    return { storeSales: sales, ranchRevenue: rev, storeProfit: prof };
-                });
-
-                // ============== 一鍵複製計畫 ==============
-                const copyDateInput = ref('');
-                const copyFromDate = () => {
-                    if(!copyDateInput.value) return alert('請先選擇想複製的日期！');
-                    const sourceRecord = dbRecords.value.find(r => r.rawDate === copyDateInput.value);
-                    if(sourceRecord) {
-                        const clonedRecords = JSON.parse(JSON.stringify(sourceRecord.records));
-                        for(let org in clonedRecords) {
-                            for(let branch in clonedRecords[org]) {
-                                if(clonedRecords[org][branch].returnBig === undefined) clonedRecords[org][branch].returnBig = 0;
-                                if(clonedRecords[org][branch].returnSmall === undefined) clonedRecords[org][branch].returnSmall = 0;
-                            }
-                        }
-                        form.value.records = clonedRecords;
-                        alert(`✅ 已成功複製 ${sourceRecord.displayDate} 的計畫！\n請於下方確認並微調後，再點擊寫入。`);
-                    } else { alert('找不到該日期的紀錄！'); }
-                };
-
                 const saveRecord = async () => {
                     isSyncing.value = true;
                     try {
                         const stats = calcDailyTotals(form.value);
+                        const d = new Date(form.value.rawDate);
+                        const displayTitle = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}週${['日','一','二','三','四','五','六'][d.getDay()]}`;
                         const recordData = {
                             id: form.value.id || Date.now(),
                             rawDate: form.value.rawDate,
-                            displayDate: formattedDateTitle.value,
+                            displayDate: displayTitle,
                             records: form.value.records,
                             totalBig: stats.totals.big,
                             totalSmall: stats.totals.small,
@@ -839,18 +850,13 @@
                         };
 
                         if (isEditing.value) {
-                            const updates = {};
-                            updates[`/${DAILY_DB_PATH}/${currentEditFbKey.value}`] = recordData;
-                            await update(fbRef(db), updates);
+                            await update(fbRef(db), { [`/${DAILY_DB_PATH}/${currentEditFbKey.value}`]: recordData });
                             alert('✅ 紀錄已更新至雲端！');
                         } else {
                             const existing = dbRecords.value.find(r => r.rawDate === form.value.rawDate);
                             if (existing) {
-                                let info = `日期：${existing.displayDate}\n目前淨配送：大瓶 ${existing.totalBig} | 小瓶 ${existing.totalSmall}\n確定要直接「覆蓋」這筆資料嗎？`;
-                                if(confirm(`⚠️ 雲端已存在今日紀錄！\n\n${info}`)) {
-                                    const updates = {};
-                                    updates[`/${DAILY_DB_PATH}/${existing.fbKey}`] = recordData;
-                                    await update(fbRef(db), updates);
+                                if(confirm(`⚠️ 雲端已存在今日紀錄，確定要覆蓋這筆資料嗎？`)) {
+                                    await update(fbRef(db), { [`/${DAILY_DB_PATH}/${existing.fbKey}`]: recordData });
                                 } else { isSyncing.value = false; return; }
                             } else { await push(fbRef(db, DAILY_DB_PATH), recordData); }
                             alert('✅ 新紀錄已同步！');
@@ -861,43 +867,53 @@
                 };
 
                 const editRecord = (record) => {
-                    const fullForm = createEmptyForm();
-                    fullForm.rawDate = record.rawDate;
-                    fullForm.id = record.id;
+                    form.value = JSON.parse(JSON.stringify(createEmptyForm()));
+                    form.value.rawDate = record.rawDate;
+                    form.value.id = record.id;
                     for (const orgId in record.records) {
                         for (const branchId in record.records[orgId]) {
-                            if (fullForm.records[orgId] && fullForm.records[orgId][branchId]) {
-                                fullForm.records[orgId][branchId] = record.records[orgId][branchId];
-                                if(fullForm.records[orgId][branchId].returnBig === undefined) fullForm.records[orgId][branchId].returnBig = 0;
-                                if(fullForm.records[orgId][branchId].returnSmall === undefined) fullForm.records[orgId][branchId].returnSmall = 0;
-                            }
+                            if (!form.value.records[orgId]) form.value.records[orgId] = {};
+                            form.value.records[orgId][branchId] = record.records[orgId][branchId];
+                            if(form.value.records[orgId][branchId].returnBig === undefined) form.value.records[orgId][branchId].returnBig = 0;
+                            if(form.value.records[orgId][branchId].returnSmall === undefined) form.value.records[orgId][branchId].returnSmall = 0;
                         }
                     }
-                    form.value = fullForm;
                     currentEditId.value = record.id;
                     currentEditFbKey.value = record.fbKey;
-                    activeTab.value = 'edit';
+                    activeTab.value = 'b2b';
                     window.scrollTo(0, 0);
                 };
 
                 const cancelEdit = () => { form.value = createEmptyForm(); currentEditId.value = null; currentEditFbKey.value = null; };
 
-                const handleFileUpload = (event) => { /* Excel Upload logic omitted for brevity, kept structure identical */ };
-
-                // ================= B2C Pro 邏輯 (整合 Snippet 2) =================
+                // ================= B2C Pro 邏輯 =================
                 const b2cCustomers = ref([]);
                 const modalData = ref(null);
+                const selectedB2CDayFilter = ref('ALL');
                 
                 const ruleDays = ref([1]); 
                 const ruleBig = ref(1);
                 const ruleSmall = ref(0);
 
-                const calYear = ref(new Date().getFullYear());
-                const calMonth = ref(new Date().getMonth());
-
                 const generateUUID = () => 'F' + String(Math.floor(Math.random() * 900) + 100);
 
-                // 即時儲存至 Firebase (移除 fbKey)
+                const filteredB2CCustomers = computed(() => {
+                    if (selectedB2CDayFilter.value === 'ALL') return b2cCustomers.value;
+                    const dayTarget = selectedB2CDayFilter.value;
+                    return b2cCustomers.value.filter(c => {
+                        if(!c.schedule) return false;
+                        for (let dateStr in c.schedule) {
+                            const task = c.schedule[dateStr];
+                            if (task.big > 0 || task.small > 0) {
+                                let d = new Date(dateStr).getDay();
+                                let mapD = d === 0 ? 7 : d;
+                                if (mapD === dayTarget) return true;
+                            }
+                        }
+                        return false;
+                    });
+                });
+
                 const saveModalData = async () => {
                     if(!modalData.value || !modalData.value.fbKey) return;
                     try {
@@ -917,102 +933,99 @@
                     } catch(e) { alert("建立失敗"); }
                 };
 
-                const cloneB2CCustomer = async (customer) => {
-                    const newCust = JSON.parse(JSON.stringify(customer));
-                    newCust.uuid = generateUUID();
-                    newCust.address = customer.address ? customer.address + ' (複製)' : '新客戶';
-                    delete newCust.fbKey;
-                    try {
-                        const newRef = await push(fbRef(db, B2C_PRO_PATH), newCust);
-                        newCust.fbKey = newRef.key;
-                        openB2CModal(newCust);
-                        alert('✅ 複製成功！(包含單價與排程)');
-                    } catch(e) { alert("複製失敗"); }
-                };
-
                 const deleteB2CCustomer = async (customer) => {
-                    if (confirm(`確定要刪除客戶 [${customer.uuid}] 的所有資料與排程嗎？`)) {
-                        await remove(fbRef(db, `${B2C_PRO_PATH}/${customer.fbKey}`));
-                        closeB2CModal();
+                    if (confirm(`確定要完全刪除散客 [${customer.uuid} ${customer.address}] 的資料嗎？\n⚠️ 此操作無法復原！`)) {
+                        try {
+                            await remove(fbRef(db, `${B2C_PRO_PATH}/${customer.fbKey}`));
+                            modalData.value = null;
+                        } catch(e) { alert('刪除失敗'); }
                     }
                 };
 
                 const openB2CModal = (customer) => { modalData.value = JSON.parse(JSON.stringify(customer)); };
                 const closeB2CModal = () => { saveModalData(); modalData.value = null; };
 
-                // B2C 日曆計算
-                const calPadding = computed(() => {
-                    let firstDay = new Date(calYear.value, calMonth.value, 1).getDay();
-                    return firstDay === 0 ? 6 : firstDay - 1; 
+                const modalCalendarBlocks = computed(() => {
+                    if (!modalData.value) return [];
+                    const blocks = [];
+                    let baseDate = new Date();
+                    if (modalData.value.schedule && Object.keys(modalData.value.schedule).length > 0) {
+                        const dates = Object.keys(modalData.value.schedule).map(d => new Date(d));
+                        const minDate = new Date(Math.min(...dates));
+                        const maxDate = new Date(Math.max(...dates));
+                        if(maxDate > baseDate) {
+                            baseDate = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+                        }
+                    }
+                    let y = baseDate.getFullYear();
+                    let m = baseDate.getMonth();
+                    for(let i=0; i<3; i++) {
+                        let curM = m + i;
+                        let curY = y;
+                        if(curM > 11) { curM -= 12; curY++; }
+                        let firstDay = new Date(curY, curM, 1).getDay();
+                        let pad = firstDay === 0 ? 6 : firstDay - 1;
+                        let days = new Date(curY, curM + 1, 0).getDate();
+                        blocks.push({ key: `${curY}-${curM}`, year: curY, month: curM, padding: pad, days: days });
+                    }
+                    return blocks;
                 });
-                const calDaysInMonth = computed(() => new Date(calYear.value, calMonth.value + 1, 0).getDate());
-                const calPrevMonth = () => { if (calMonth.value === 0) { calMonth.value = 11; calYear.value--; } else { calMonth.value--; } };
-                const calNextMonth = () => { if (calMonth.value === 11) { calMonth.value = 0; calYear.value++; } else { calMonth.value++; } };
-                const getFormatDateStr = (day) => `${calYear.value}-${String(calMonth.value + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-                const getModalDayData = (day) => {
+                const getModalDayData = (y, m, d) => {
                     if (!modalData.value || !modalData.value.schedule) return null;
-                    const dateStr = getFormatDateStr(day);
+                    const dateStr = getFormatDateStrGlobal(y, m, d);
                     const task = modalData.value.schedule[dateStr];
                     if (task) return { ...task, isActive: true };
                     return null;
                 };
 
-                const getCalCellClass = (day) => {
-                    const data = getModalDayData(day);
+                const getCalCellClass = (y, m, d) => {
+                    const data = getModalDayData(y, m, d);
                     if (!data) return 'qty-null';
                     if (data.big === 0 && data.small === 0) return 'qty-0';
                     return 'qty-active';
                 };
 
-                // 長按觸控邏輯
                 let pressTimer = null;
                 let isLongPress = false;
 
-                const startPress = (e, day) => {
+                const startPress = (e, y, m, day) => {
                     isLongPress = false;
                     pressTimer = setTimeout(() => {
                         isLongPress = true;
-                        togglePayment(day);
+                        const dateStr = getFormatDateStrGlobal(y, m, day);
+                        let task = modalData.value.schedule[dateStr];
+                        if (task && (task.big > 0 || task.small > 0)) {
+                            task.isPaid = !task.isPaid;
+                            modalData.value.schedule = { ...modalData.value.schedule, [dateStr]: task };
+                            saveModalData();
+                        }
                         if (navigator.vibrate) navigator.vibrate(50);
                     }, 500); 
                 };
 
-                const endPress = (e, day) => {
+                const endPress = (e, y, m, day) => {
                     if (pressTimer) clearTimeout(pressTimer);
-                    if (!isLongPress) smartToggleQty(day);
-                };
+                    if (!isLongPress) {
+                        if (ruleBig.value === 0 && ruleSmall.value === 0) return alert('請先設定上方的畫筆數量！');
+                        const dateStr = getFormatDateStrGlobal(y, m, day);
+                        if (!modalData.value.schedule) modalData.value.schedule = {};
+                        const currentSchedule = modalData.value.schedule;
+                        let task = currentSchedule[dateStr];
 
-                const cancelPress = () => { if (pressTimer) clearTimeout(pressTimer); };
-
-                const togglePayment = (day) => {
-                    const dateStr = getFormatDateStr(day);
-                    let task = modalData.value.schedule[dateStr];
-                    if (task && (task.big > 0 || task.small > 0)) {
-                        task.isPaid = !task.isPaid;
-                        modalData.value.schedule = { ...modalData.value.schedule, [dateStr]: task };
+                        if (!task || (task.big === 0 && task.small === 0)) {
+                            task = { big: ruleBig.value, small: ruleSmall.value, isPaid: false, isDelivered: false };
+                        } else if (task.big === ruleBig.value && task.small === ruleSmall.value) {
+                            task = { big: 0, small: 0, isPaid: task.isPaid || false, isDelivered: task.isDelivered || false };
+                        } else {
+                            task = { big: ruleBig.value, small: ruleSmall.value, isPaid: task.isPaid || false, isDelivered: task.isDelivered || false };
+                        }
+                        modalData.value.schedule = { ...currentSchedule, [dateStr]: task };
                         saveModalData();
                     }
                 };
 
-                const smartToggleQty = (day) => {
-                    if (ruleBig.value === 0 && ruleSmall.value === 0) return alert('請先設定上方的畫筆數量！');
-                    const dateStr = getFormatDateStr(day);
-                    if (!modalData.value.schedule) modalData.value.schedule = {};
-                    const currentSchedule = modalData.value.schedule;
-                    let task = currentSchedule[dateStr];
-
-                    if (!task || (task.big === 0 && task.small === 0)) {
-                        task = { big: ruleBig.value, small: ruleSmall.value, isPaid: false };
-                    } else if (task.big === ruleBig.value && task.small === ruleSmall.value) {
-                        task = { big: 0, small: 0, isPaid: task.isPaid || false };
-                    } else {
-                        task = { big: ruleBig.value, small: ruleSmall.value, isPaid: task.isPaid || false };
-                    }
-
-                    modalData.value.schedule = { ...currentSchedule, [dateStr]: task };
-                    saveModalData();
-                };
+                const cancelPress = () => { if (pressTimer) clearTimeout(pressTimer); };
 
                 const applyRule = (weeks) => {
                     if (ruleDays.value.length === 0) return alert("請勾選至少一天的配送日！");
@@ -1028,12 +1041,13 @@
                     for (let d = startDate; d <= endDate; d.setDate(d.getDate() + 1)) {
                         let jsDay = d.getDay();
                         let mappedDay = jsDay === 0 ? 7 : jsDay;
-
                         if (ruleDays.value.includes(mappedDay)) {
                             const dateStr = d.toISOString().split('T')[0];
                             const existing = newSchedule[dateStr];
                             newSchedule[dateStr] = { 
-                                big: ruleBig.value, small: ruleSmall.value, isPaid: existing ? existing.isPaid : false 
+                                big: ruleBig.value, small: ruleSmall.value, 
+                                isPaid: existing ? existing.isPaid : false,
+                                isDelivered: existing ? existing.isDelivered : false
                             };
                             count++;
                         }
@@ -1064,77 +1078,364 @@
                     }
                 };
 
-                // B2C 全局統計
-                const aggregatedCalendar = computed(() => {
+                // ================= B2C 晨間邏輯 =================
+                const b2cMorningCustomers = ref([]);
+                const morningModalData = ref(null);
+                const morningApplyMonthStr = ref(getTodayStr().substring(0,7)); // 預設當前月份 (YYYY-MM)
+
+                const cyclesList = [
+                    { value: 'daily', label: '每天', days: [0,1,2,3,4,5,6] },
+                    { value: 'mon_fri', label: '一～五', days: [1,2,3,4,5] },
+                    { value: 'tue_thu', label: '二四', days: [2,4] },
+                    { value: 'tue_thu_sat', label: '二四六', days: [2,4,6] },
+                    { value: 'mon_sat', label: '一～六', days: [1,2,3,4,5,6] },
+                    { value: 'mon_wed_fri', label: '一三五', days: [1,3,5] },
+                    { value: 'tue_sun', label: '二～日', days: [2,3,4,5,6,0] },
+                    { value: 'wed_sun', label: '三～日', days: [3,4,5,6,0] }
+                ];
+                
+                const getCycleLabel = (val) => {
+                    const c = cyclesList.find(x => x.value === val);
+                    return c ? c.label : '未設定';
+                };
+
+                const openB2CMorningModal = (customer) => { morningModalData.value = JSON.parse(JSON.stringify(customer)); };
+                const closeB2CMorningModal = () => { saveMorningModalData(); morningModalData.value = null; };
+
+                const addNewB2CMorningCustomer = async () => {
+                    const newCust = { uuid: 'M' + String(Math.floor(Math.random()*900)+100), area: '', address: '', note: '', price: 30, qty: 1, cycle: 'daily', schedule: {} };
+                    try {
+                        const newRef = await push(fbRef(db, MORNING_DB_PATH), newCust);
+                        newCust.fbKey = newRef.key;
+                        openB2CMorningModal(newCust);
+                    } catch(e) { alert("建立失敗"); }
+                };
+
+                const saveMorningModalData = async () => {
+                    if(!morningModalData.value || !morningModalData.value.fbKey) return;
+                    try {
+                        const payload = JSON.parse(JSON.stringify(morningModalData.value));
+                        delete payload.fbKey;
+                        await update(fbRef(db), { [`/${MORNING_DB_PATH}/${morningModalData.value.fbKey}`]: payload });
+                    } catch (e) { console.error("Save failed", e); }
+                };
+
+                const deleteB2CMorningCustomer = async (customer) => {
+                    if (confirm(`確定刪除晨間客戶 [${customer.uuid} ${customer.address}]？\n⚠️ 無法復原！`)) {
+                        try {
+                            await remove(fbRef(db, `${MORNING_DB_PATH}/${customer.fbKey}`));
+                            morningModalData.value = null; 
+                        } catch(e) { alert('刪除失敗'); }
+                    }
+                };
+
+                const importMorningCustomers = async () => {
+                    if(!confirm("即將匯入 54 位初始客戶名單，確定執行？")) return;
+                    isSyncing.value = true;
+                    const csvData = `m001,大埔,大埔姑婆\nm002,大埔,詹_豬肉燈\nm091,大埔,上惠\nm003,大埔,宋老師 470巷\nm004,二鬮,162號（阿國）\nm005,二鬮,136巷20弄_97號\nm006,二鬮,136巷20弄_89號\nm007,二鬮,買給_孫女喝\nm008,二鬮,阿德_舅媽買\nm010,大埔,16號_大利路 \nm011,大埔,CPC，張小姐\nm012,添福,檳榔攤\nm013,中園街,螺絲工廠\nm014,中園街,黃伊柔-78號\nm015,中園街,釣蝦場_179號3F\nm016,中園街,vicky(五寮代課老師\nm099,中園街,81-6F\nm019,中園街,弘道里怪手\nm020,中園街,阿鳳姑姑\nm021,民權路,200巷(阿榮\nm023,老街,nicole\nm024,長泰街,長泰聚-Fish\nm025,長泰街,78巷20號 8F(卓)\nm096,介壽路,大姑姑\nm0271,中華路,真\nm028,永安街,73-6F( 飯糰早餐\nm029,光明路,69巷23號6F (千玉妃) \nm030,介壽路,276巷88弄3號 ( 素貞媽媽\nm031,介壽路,橫溪\nm032,介壽路,62號（機車行）\nm034,大同路,Ching\nm035,大同路,10號（劉妮妮)\nm037,光明路,64號\nm038,光明路,100號\nm039,永安街,146 號（張秀\nm040,永安街,148 號\nm041,永安街,132 巷 1號\nm042,永安街,182 巷 2號\nm043,永安街,182 巷 4號\nm243,永安街,182 巷 8號\nm044,大同路,103號(肉圓隔壁 )\nm045,光明路,阿石阿伯\nm119,永安街,獨居的回收太太\nm046,永安街,12號(5嬸婆女兒)\nm048,中正路,旅遊-呂小姐\nm049,中正路,豬肉攤(3/09)\nm051,中華路,孫先生\nm054,中華路,Ｅm\nm055,菜市場,水牛伯豬肉攤\nm055b,菜市場,林小喬\nm056,菜市場,張小妹\nm057,菜市場,芳\nm078,和平街,毛小姐\nm058,和平街,36巷7弄4號6樓（和平街）\nm059,大仁路,34巷\nm061,大仁路,馬牌輪胎行_轉角\nm064,恩主公,大智路8-2 九樓\nm097,三鶯橋下,Fu\nm065,復興路,144號- 雞蛋\nm066,民生街,豐耘\nm112,民生街,葉小姐(2）\nm114,大義路,春城216-11\nm068,三樹路,歐洲之旅（改送.月子中心 301房 ）\nm071,北大,北大森閤\nm074,介壽路,歐鄉\nm075,鶯歌,八方\nm093,五寮,王大哥 8.1K`;
+                    const lines = csvData.trim().split('\n');
+                    for(let line of lines) {
+                        const [uuid, area, name] = line.split(',');
+                        if(!uuid) continue;
+                        const newCust = { uuid, area, address: name, price: 30, qty: 1, cycle: 'daily', note: '', schedule: {} };
+                        await push(fbRef(db, MORNING_DB_PATH), newCust);
+                    }
+                    isSyncing.value = false;
+                    alert('✅ 晨間客戶已匯入完畢！');
+                };
+
+                // 晨間一鍵生成月份排程
+                const applyMorningCycleToMonth = () => {
+                    if(!morningApplyMonthStr.value) return alert('請先選擇月份！');
+                    const cycle = morningModalData.value.cycle;
+                    const cy = cyclesList.find(x => x.value === cycle);
+                    if (!cy) return alert('請先選擇配送週期！');
+
+                    const [year, month] = morningApplyMonthStr.value.split('-');
+                    const targetYear = parseInt(year);
+                    const targetMonth = parseInt(month) - 1; // 0-indexed
+                    const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+                    
+                    if(!morningModalData.value.schedule) morningModalData.value.schedule = {};
+                    const newSchedule = { ...morningModalData.value.schedule };
+                    let count = 0;
+
+                    for(let d=1; d<=daysInMonth; d++) {
+                        const dateObj = new Date(targetYear, targetMonth, d);
+                        const dayOfWeek = dateObj.getDay();
+                        
+                        if(cy.days.includes(dayOfWeek)) {
+                            const dateStr = getFormatDateStrGlobal(targetYear, targetMonth, d);
+                            const existing = newSchedule[dateStr];
+                            newSchedule[dateStr] = { 
+                                qty: morningModalData.value.qty,
+                                price: morningModalData.value.price,
+                                isPaid: existing ? existing.isPaid : false,
+                                isDelivered: existing ? existing.isDelivered : false
+                            };
+                            count++;
+                        }
+                    }
+                    morningModalData.value.schedule = newSchedule;
+                    saveMorningModalData();
+                    alert(`✅ ${year}年${month}月 已成功排入 ${count} 天。`);
+                };
+
+                const morningCalendarBlocks = computed(() => {
+                    if (!morningModalData.value) return [];
+                    const blocks = [];
+                    let baseDate = new Date(); // 預設當前
+                    if (morningModalData.value.schedule && Object.keys(morningModalData.value.schedule).length > 0) {
+                        const dates = Object.keys(morningModalData.value.schedule).map(d => new Date(d));
+                        const minDate = new Date(Math.min(...dates));
+                        const maxDate = new Date(Math.max(...dates));
+                        if(maxDate > baseDate) {
+                            baseDate = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+                        }
+                    }
+                    let y = baseDate.getFullYear();
+                    let m = baseDate.getMonth();
+                    for(let i=0; i<3; i++) {
+                        let curM = m + i;
+                        let curY = y;
+                        if(curM > 11) { curM -= 12; curY++; }
+                        let firstDay = new Date(curY, curM, 1).getDay();
+                        let pad = firstDay === 0 ? 6 : firstDay - 1;
+                        let days = new Date(curY, curM + 1, 0).getDate();
+                        blocks.push({ key: `${curY}-${curM}`, year: curY, month: curM, padding: pad, days: days });
+                    }
+                    return blocks;
+                });
+
+                const getMorningModalDayData = (y, m, d) => {
+                    if (!morningModalData.value || !morningModalData.value.schedule) return null;
+                    const dateStr = getFormatDateStrGlobal(y, m, d);
+                    return morningModalData.value.schedule[dateStr] || null;
+                };
+
+                const getMorningCalCellClass = (y, m, d) => {
+                    const data = getMorningModalDayData(y, m, d);
+                    if (!data) return 'qty-null';
+                    if (data.qty === 0) return 'qty-0';
+                    return 'qty-active-morning';
+                };
+
+                let morningPressTimer = null;
+                let isMorningLongPress = false;
+
+                const startMorningPress = (e, y, m, day) => {
+                    isMorningLongPress = false;
+                    morningPressTimer = setTimeout(() => {
+                        isMorningLongPress = true;
+                        const dateStr = getFormatDateStrGlobal(y, m, day);
+                        let task = morningModalData.value.schedule[dateStr];
+                        if (task && task.qty > 0) {
+                            task.isPaid = !task.isPaid;
+                            morningModalData.value.schedule = { ...morningModalData.value.schedule, [dateStr]: task };
+                            saveMorningModalData();
+                        }
+                        if (navigator.vibrate) navigator.vibrate(50);
+                    }, 500); 
+                };
+
+                const endMorningPress = (e, y, m, day) => {
+                    if (morningPressTimer) clearTimeout(morningPressTimer);
+                    if (!isMorningLongPress) {
+                        const dateStr = getFormatDateStrGlobal(y, m, day);
+                        if (!morningModalData.value.schedule) morningModalData.value.schedule = {};
+                        const currentSchedule = morningModalData.value.schedule;
+                        let task = currentSchedule[dateStr];
+
+                        if (!task || task.qty === 0) {
+                            task = { qty: morningModalData.value.qty, price: morningModalData.value.price, isPaid: false, isDelivered: false };
+                        } else {
+                            task = { qty: 0, price: morningModalData.value.price, isPaid: task.isPaid || false, isDelivered: task.isDelivered || false };
+                        }
+                        morningModalData.value.schedule = { ...currentSchedule, [dateStr]: task };
+                        saveMorningModalData();
+                    }
+                };
+
+                const cancelMorningPress = () => { if (morningPressTimer) clearTimeout(morningPressTimer); };
+
+                const getMorningCustomerUnpaid = (customer) => {
+                    if(!customer || !customer.schedule) return 0;
+                    let sum = 0;
+                    for (let date in customer.schedule) {
+                        const task = customer.schedule[date];
+                        if (task.qty > 0 && !task.isPaid) {
+                            // 使用當天記錄的價格結算 (防止後來改設定導致帳單出錯)
+                            const p = task.price || customer.price;
+                            sum += (task.qty * p);
+                        }
+                    }
+                    return sum;
+                };
+
+                const settleMorningAllUnpaid = () => {
+                    if (confirm(`確定結清此晨客的所有欠款嗎？`)) {
+                        const newSchedule = { ...morningModalData.value.schedule };
+                        for (let date in newSchedule) {
+                            if (newSchedule[date].qty > 0 && !newSchedule[date].isPaid) {
+                                newSchedule[date].isPaid = true;
+                            }
+                        }
+                        morningModalData.value.schedule = newSchedule;
+                        saveMorningModalData();
+                    }
+                };
+
+                // ================= 配送檢核表邏輯 =================
+                const deliveryCheckDate = ref(getTodayStr());
+                
+                const dailyDeliveryList = computed(() => {
+                    const target = deliveryCheckDate.value;
+                    const list = [];
+                    
+                    // 1. 抓取 B2C Pro
+                    b2cCustomers.value.forEach(c => {
+                        if(c.schedule && c.schedule[target]) {
+                            const task = c.schedule[target];
+                            if(task.big > 0 || task.small > 0) {
+                                list.push({ type: 'pro', customer: c, schedule: task });
+                            }
+                        }
+                    });
+                    
+                    // 2. 抓取 晨間 業務 (必須依賴 schedule 內存在)
+                    b2cMorningCustomers.value.forEach(c => {
+                        if(c.schedule && c.schedule[target]) {
+                            const task = c.schedule[target];
+                            if(task.qty > 0) {
+                                list.push({ type: 'morning', customer: c, schedule: task });
+                            }
+                        }
+                    });
+                    
+                    return list.sort((a, b) => (a.customer.area || '').localeCompare(b.customer.area || ''));
+                });
+
+                const toggleDeliveryStatus = async (taskObj) => {
+                    const fbKey = taskObj.customer.fbKey;
+                    const dateStr = deliveryCheckDate.value;
+                    const isNowDelivered = !taskObj.schedule.isDelivered;
+                    taskObj.schedule.isDelivered = isNowDelivered; 
+                    
+                    try {
+                        const path = taskObj.type === 'morning' ? MORNING_DB_PATH : B2C_PRO_PATH;
+                        await update(fbRef(db), { [`/${path}/${fbKey}/schedule/${dateStr}/isDelivered`]: isNowDelivered });
+                    } catch (e) {
+                        taskObj.schedule.isDelivered = !isNowDelivered; 
+                    }
+                };
+
+                // ================= 首頁儀表板整合統計 =================
+                const aggregatedB2CPro = computed(() => {
                     const map = {};
                     b2cCustomers.value.forEach(c => {
                         if(!c.schedule) return;
                         for(let dateStr in c.schedule) {
                             const task = c.schedule[dateStr];
-                            if (!map[dateStr]) { map[dateStr] = { big: 0, small: 0, revenue: 0, unpaid: 0, hasOrder: true }; }
-                            map[dateStr].big += task.big;
-                            map[dateStr].small += task.small;
-                            const rev = (task.big * c.priceBig) + (task.small * c.priceSmall);
-                            map[dateStr].revenue += rev;
-                            if (!task.isPaid) map[dateStr].unpaid += rev;
+                            if (!map[dateStr]) map[dateStr] = 0;
+                            map[dateStr] += (task.big * c.priceBig) + (task.small * c.priceSmall);
                         }
                     });
                     return map;
                 });
 
-                const getGlobalDayData = (day) => {
-                    const dateStr = getFormatDateStr(day);
-                    return aggregatedCalendar.value[dateStr] || { hasOrder: false };
+                const aggregatedB2CMorning = computed(() => {
+                    const map = {};
+                    b2cMorningCustomers.value.forEach(c => {
+                        if(!c.schedule) return;
+                        for(let dateStr in c.schedule) {
+                            const task = c.schedule[dateStr];
+                            if (task.qty > 0) {
+                                if (!map[dateStr]) map[dateStr] = 0;
+                                const p = task.price || c.price;
+                                map[dateStr] += (task.qty * p);
+                            }
+                        }
+                    });
+                    return map;
+                });
+
+                const aggregatedB2B = computed(() => {
+                    const map = {};
+                    dbRecords.value.forEach(r => {
+                        if (!map[r.rawDate]) map[r.rawDate] = 0;
+                        if(r.financials) {
+                            map[r.rawDate] += r.financials.ranchRevenue;
+                        }
+                    });
+                    return map;
+                });
+
+                const getHomeDayRevenue = (day) => {
+                    const dateStr = getFormatDateStrGlobal(homeCalYear.value, homeCalMonth.value, day);
+                    const b2bVal = aggregatedB2B.value[dateStr] || 0;
+                    const b2cProVal = aggregatedB2CPro.value[dateStr] || 0;
+                    const morningVal = aggregatedB2CMorning.value[dateStr] || 0;
+                    
+                    if (homeRevenueView.value === 'ALL') return b2bVal + b2cProVal + morningVal;
+                    if (homeRevenueView.value === 'B2B') return b2bVal;
+                    if (homeRevenueView.value === 'B2C') return b2cProVal;
+                    if (homeRevenueView.value === 'MORNING') return morningVal;
+                    return 0;
                 };
 
-                const currentMonthPrefix = computed(() => `${calYear.value}-${String(calMonth.value + 1).padStart(2, '0')}`);
-                const totalMonthBig = computed(() => { let t = 0; for (let k in aggregatedCalendar.value) { if(k.startsWith(currentMonthPrefix.value)) t += aggregatedCalendar.value[k].big; } return t; });
-                const totalMonthSmall = computed(() => { let t = 0; for (let k in aggregatedCalendar.value) { if(k.startsWith(currentMonthPrefix.value)) t += aggregatedCalendar.value[k].small; } return t; });
-                const totalMonthRevenue = computed(() => { let t = 0; for (let k in aggregatedCalendar.value) { if(k.startsWith(currentMonthPrefix.value)) t += aggregatedCalendar.value[k].revenue; } return t; });
+                const homeStats = computed(() => {
+                    let b2bTotal = 0, b2cProTotal = 0, b2cMorningTotal = 0;
+                    const prefix = `${homeCalYear.value}-${String(homeCalMonth.value + 1).padStart(2, '0')}`;
+                    
+                    for(let dateStr in aggregatedB2B.value) {
+                        if(dateStr.startsWith(prefix)) b2bTotal += aggregatedB2B.value[dateStr];
+                    }
+                    for(let dateStr in aggregatedB2CPro.value) {
+                        if(dateStr.startsWith(prefix)) b2cProTotal += aggregatedB2CPro.value[dateStr];
+                    }
+                    for(let dateStr in aggregatedB2CMorning.value) {
+                        if(dateStr.startsWith(prefix)) b2cMorningTotal += aggregatedB2CMorning.value[dateStr];
+                    }
+                    return { b2b: b2bTotal, b2cPro: b2cProTotal, b2cMorning: b2cMorningTotal };
+                });
 
                 // ================= 生命週期 =================
                 onMounted(() => {
                     isSyncing.value = true;
-                    // B2B 監聽
                     onValue(fbRef(db, CONFIG_DB_PATH), (snapshot) => {
                         const data = snapshot.val();
-                        if (data) {
-                            for (let org in data) {
-                                if(orgConfig.value[org]) {
-                                    data[org].branches.forEach(dbBranch => {
-                                        let localBranch = orgConfig.value[org].branches.find(b => b.id === dbBranch.id);
-                                        if (localBranch) { localBranch.prices = dbBranch.prices; }
-                                    });
-                                }
-                            }
-                        }
+                        if (data) orgConfig.value = data;
                     });
                     onValue(fbRef(db, DAILY_DB_PATH), (snapshot) => {
                         const data = snapshot.val();
                         dbRecords.value = data ? Object.keys(data).map(key => ({ fbKey: key, ...data[key] })) : [];
                     });
-
-                    // B2C 監聽
                     onValue(fbRef(db, B2C_PRO_PATH), (snapshot) => {
                         const data = snapshot.val();
                         if (data) {
                             b2cCustomers.value = Object.keys(data).map(key => ({ fbKey: key, ...data[key] })).reverse();
-                            // 若彈窗處於開啟狀態，確保資料同步更新
                             if (modalData.value && modalData.value.fbKey) {
                                 const latestData = b2cCustomers.value.find(c => c.fbKey === modalData.value.fbKey);
-                                if (latestData) {
-                                    // 僅更新 schedule 確保不影響當下正在輸入的文字
-                                    modalData.value.schedule = latestData.schedule || {};
-                                }
+                                if (latestData) modalData.value.schedule = latestData.schedule || {};
                             }
                         } else { b2cCustomers.value = []; }
+                    });
+                    onValue(fbRef(db, MORNING_DB_PATH), (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            b2cMorningCustomers.value = Object.keys(data).map(key => ({ fbKey: key, ...data[key] })).reverse();
+                            if (morningModalData.value && morningModalData.value.fbKey) {
+                                const latest = b2cMorningCustomers.value.find(c => c.fbKey === morningModalData.value.fbKey);
+                                if (latest) morningModalData.value = JSON.parse(JSON.stringify(latest));
+                            }
+                        } else { b2cMorningCustomers.value = []; }
                         isSyncing.value = false;
                     });
                 });
 
                 const getOrgName = (orgId) => orgConfig.value[orgId]?.name || orgId;
                 const getBranchName = (orgId, branchId) => {
-                    const branch = orgConfig.value[orgId]?.branches.find(b => b.id === branchId);
+                    const branch = orgConfig.value[orgId]?.branches?.find(b => b.id === branchId);
                     return branch ? branch.name : branchId;
                 };
                 const getFilterName = () => {
@@ -1144,23 +1445,34 @@
                 };
 
                 return {
-                    activeTab, orgConfig, form, isEditing, isSyncing,
-                    currentOrgId, currentBranchId, currentOrgBranches, currentFormData, formattedDateTitle,
-                    totalCurrentBig, totalCurrentSmall, 
-                    displayMonthTitle, selectedMonthStats, currentMonthIndex, prevMonth, nextMonth, availableMonths,
-                    dbRecords, filteredHistory, filterOption,
-                    copyDateInput, copyFromDate,
-                    saveRecord, editRecord, cancelEdit, handleFileUpload,
-                    getOrgName, getBranchName, getFilterName, calcBranchFinancials, saveConfigToCloud,
+                    activeTab, isSyncing,
+                    // 首頁
+                    homeCalYear, homeCalMonth, homeCalPadding, homeCalDaysInMonth, 
+                    homeCalPrevMonth, homeCalNextMonth, getHomeDayRevenue, homeStats, homeRevenueView,
                     
-                    // B2C Pro
-                    activeB2CTab, b2cCustomers, modalData,
-                    addNewB2CCustomer, cloneB2CCustomer, deleteB2CCustomer, openB2CModal, closeB2CModal, saveModalData,
-                    ruleDays, ruleBig, ruleSmall, applyRule,
-                    calYear, calMonth, calPadding, calDaysInMonth, calPrevMonth, calNextMonth,
-                    getModalDayData, getCalCellClass, getCustomerUnpaid, settleAllUnpaid,
-                    getGlobalDayData, totalMonthBig, totalMonthSmall, totalMonthRevenue,
-                    startPress, endPress, cancelPress
+                    // B2B
+                    showB2BConfigModal, orgConfig, form, isEditing, currentOrgId, currentBranchId, currentOrgBranches, currentFormData,
+                    newOrgName, newBranchNames, addNewOrg, addNewBranch, saveConfigToCloud,
+                    saveRecord, editRecord, cancelEdit,
+                    
+                    // B2B 帳單
+                    dbRecords, filteredHistory, filterOption, getOrgName, getBranchName, getFilterName,
+
+                    // B2C
+                    b2cCustomers, filteredB2CCustomers, selectedB2CDayFilter,
+                    modalData, ruleDays, ruleBig, ruleSmall, modalCalendarBlocks,
+                    addNewB2CCustomer, deleteB2CCustomer, openB2CModal, closeB2CModal, saveModalData,
+                    applyRule, getCustomerUnpaid, settleAllUnpaid,
+                    getModalDayData, getCalCellClass, startPress, endPress, cancelPress,
+
+                    // B2C 晨間
+                    b2cMorningCustomers, morningModalData, cyclesList, getCycleLabel, morningApplyMonthStr,
+                    openB2CMorningModal, closeB2CMorningModal, addNewB2CMorningCustomer, saveMorningModalData, deleteB2CMorningCustomer, importMorningCustomers,
+                    applyMorningCycleToMonth, morningCalendarBlocks, getMorningModalDayData, getMorningCalCellClass,
+                    startMorningPress, endMorningPress, cancelMorningPress, getMorningCustomerUnpaid, settleMorningAllUnpaid,
+
+                    // 配送核對
+                    deliveryCheckDate, dailyDeliveryList, toggleDeliveryStatus
                 }
             }
         }).mount('#app')
